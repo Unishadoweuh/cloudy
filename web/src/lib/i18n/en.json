@@ -1,0 +1,82 @@
+{
+    "common": {
+        "loading": "Loading...",
+        "error": "Error",
+        "retry": "Retry",
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "create": "Create",
+        "search": "Search",
+        "filter": "Filter",
+        "all": "All",
+        "clear": "Clear",
+        "settings": "Settings",
+        "notifications": "Notifications"
+    },
+    "nav": {
+        "dashboard": "Dashboard",
+        "instances": "Instances",
+        "volumes": "Volumes",
+        "networks": "Networks",
+        "security": "Security",
+        "monitoring": "Monitoring",
+        "users": "Users",
+        "settings": "Settings",
+        "newInstance": "New Instance"
+    },
+    "dashboard": {
+        "title": "Dashboard",
+        "welcome": "Welcome to Uni-Cloud",
+        "quickStats": "Quick Stats",
+        "quickActions": "Quick Actions",
+        "systemOnline": "System Online",
+        "allServicesRunning": "All services running"
+    },
+    "instances": {
+        "title": "Instances",
+        "subtitle": "Manage your virtual machines and containers",
+        "total": "Total Instances",
+        "running": "Running",
+        "stopped": "Stopped",
+        "vcpus": "vCPUs",
+        "noInstances": "No instances yet",
+        "noResults": "No matching instances",
+        "createFirst": "Create your first instance",
+        "tryDifferent": "Try different filters",
+        "allTypes": "All Types",
+        "vmsOnly": "VMs Only",
+        "lxcOnly": "LXC Only",
+        "allStatus": "All Status",
+        "gridView": "Grid View",
+        "listView": "List View"
+    },
+    "volumes": {
+        "title": "Storage & Volumes",
+        "subtitle": "Manage storage pools and disk volumes",
+        "storagePools": "Storage Pools",
+        "volumes": "Volumes",
+        "totalCapacity": "Total Capacity",
+        "used": "Used",
+        "allStorage": "All Storage",
+        "noVolumes": "No volumes found"
+    },
+    "settings": {
+        "title": "Settings",
+        "subtitle": "Customize your Uni-Cloud experience",
+        "language": "Language",
+        "languageDesc": "Choose your preferred language",
+        "theme": "Theme",
+        "themeDesc": "Switch between light and dark mode",
+        "dark": "Dark",
+        "light": "Light",
+        "system": "System",
+        "saved": "Settings saved"
+    },
+    "actions": {
+        "start": "Start",
+        "stop": "Stop",
+        "reset": "Reset",
+        "shutdown": "Shutdown"
+    }
+}

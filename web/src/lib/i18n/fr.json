@@ -1,0 +1,82 @@
+{
+    "common": {
+        "loading": "Chargement...",
+        "error": "Erreur",
+        "retry": "Réessayer",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "delete": "Supprimer",
+        "create": "Créer",
+        "search": "Rechercher",
+        "filter": "Filtrer",
+        "all": "Tout",
+        "clear": "Effacer",
+        "settings": "Paramètres",
+        "notifications": "Notifications"
+    },
+    "nav": {
+        "dashboard": "Tableau de bord",
+        "instances": "Instances",
+        "volumes": "Volumes",
+        "networks": "Réseaux",
+        "security": "Sécurité",
+        "monitoring": "Surveillance",
+        "users": "Utilisateurs",
+        "settings": "Paramètres",
+        "newInstance": "Nouvelle Instance"
+    },
+    "dashboard": {
+        "title": "Tableau de bord",
+        "welcome": "Bienvenue sur Uni-Cloud",
+        "quickStats": "Statistiques rapides",
+        "quickActions": "Actions rapides",
+        "systemOnline": "Système en ligne",
+        "allServicesRunning": "Tous les services fonctionnent"
+    },
+    "instances": {
+        "title": "Instances",
+        "subtitle": "Gérez vos machines virtuelles et conteneurs",
+        "total": "Total Instances",
+        "running": "En cours",
+        "stopped": "Arrêtées",
+        "vcpus": "vCPUs",
+        "noInstances": "Aucune instance",
+        "noResults": "Aucune instance trouvée",
+        "createFirst": "Créez votre première instance",
+        "tryDifferent": "Essayez d'autres filtres",
+        "allTypes": "Tous les types",
+        "vmsOnly": "VMs uniquement",
+        "lxcOnly": "LXC uniquement",
+        "allStatus": "Tous les statuts",
+        "gridView": "Vue grille",
+        "listView": "Vue liste"
+    },
+    "volumes": {
+        "title": "Stockage & Volumes",
+        "subtitle": "Gérez les pools de stockage et les volumes",
+        "storagePools": "Pools de stockage",
+        "volumes": "Volumes",
+        "totalCapacity": "Capacité totale",
+        "used": "Utilisé",
+        "allStorage": "Tout le stockage",
+        "noVolumes": "Aucun volume trouvé"
+    },
+    "settings": {
+        "title": "Paramètres",
+        "subtitle": "Personnalisez votre expérience Uni-Cloud",
+        "language": "Langue",
+        "languageDesc": "Choisissez votre langue préférée",
+        "theme": "Thème",
+        "themeDesc": "Basculer entre le mode clair et sombre",
+        "dark": "Sombre",
+        "light": "Clair",
+        "system": "Système",
+        "saved": "Paramètres enregistrés"
+    },
+    "actions": {
+        "start": "Démarrer",
+        "stop": "Arrêter",
+        "reset": "Redémarrer",
+        "shutdown": "Éteindre"
+    }
+}

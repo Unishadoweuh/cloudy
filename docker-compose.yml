@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: cloud_proxmox_db
+    environment:
+      POSTGRES_USER: cloud
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: cloud_proxmox
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cloud-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U cloud -d cloud_proxmox" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: cloud_proxmox_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - cloud-net
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: cloud_proxmox_api
+    ports:
+      - "3002:3002"
+    environment:
+      - DATABASE_URL=postgresql://cloud:password@postgres:5432/cloud_proxmox?schema=public
+      - PROXMOX_API_URL=${PROXMOX_API_URL}
+      - PROXMOX_API_TOKEN=${PROXMOX_API_TOKEN}
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
+      - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET}
+      - DISCORD_CALLBACK_URL=${DISCORD_CALLBACK_URL:-http://localhost:3002/auth/discord/callback}
+      - JWT_SECRET=${JWT_SECRET}
+      - PBS_API_URL=${PBS_API_URL:-}
+      - PBS_API_TOKEN=${PBS_API_TOKEN:-}
+      - PORT=3002
+    command: >
+      sh -c "npx prisma db push --skip-generate && node dist/src/main.js"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - cloud-net
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: cloud_proxmox_web
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3002
+      # In server-side rendering, web container needs to reach API container
+      - API_URL_INTERNAL=http://api:3002
+    depends_on:
+      - api
+    networks:
+      - cloud-net
+
+volumes:
+  postgres_data:
+
+
+networks:
+  cloud-net:

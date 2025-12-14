@@ -1,0 +1,86 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: cloud_proxmox_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-cloud}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-cloud_proxmox}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cloud-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-cloud} -d ${DB_NAME:-cloud_proxmox}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: cloud_proxmox_redis
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - cloud-net
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: cloud_proxmox_api
+    restart: always
+    ports:
+      - "${API_PORT:-3002}:3002"
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-cloud}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-cloud_proxmox}?schema=public
+      - PROXMOX_API_URL=${PROXMOX_API_URL}
+      - PROXMOX_API_TOKEN=${PROXMOX_API_TOKEN}
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
+      - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET}
+      - DISCORD_CALLBACK_URL=${DISCORD_CALLBACK_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - PBS_API_URL=${PBS_API_URL:-}
+      - PBS_API_TOKEN=${PBS_API_TOKEN:-}
+      - NODE_ENV=production
+      - PORT=${PORT:-3002}
+    command: >
+      sh -c "npx prisma db push --skip-generate && node dist/src/main.js"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - cloud-net
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${PUBLIC_API_URL}
+    container_name: cloud_proxmox_web
+    restart: always
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${PUBLIC_API_URL}
+      - API_URL_INTERNAL=http://api:3002
+      - NODE_ENV=production
+    depends_on:
+      - api
+    networks:
+      - cloud-net
+
+volumes:
+  postgres_data:
+  redis_data:
+
+
+networks:
+  cloud-net:
+    driver: bridge
