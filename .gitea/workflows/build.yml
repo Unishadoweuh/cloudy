@@ -6,9 +6,15 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  NODE_VERSION: '20'
+
 jobs:
-  build-api:
-    name: Build API
+  # ===================
+  # API Build & Test
+  # ===================
+  api-build:
+    name: API - Build & Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -17,13 +23,17 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: api/package-lock.json
 
       - name: Install dependencies
         working-directory: ./api
         run: npm ci
+
+      - name: Generate Prisma Client
+        working-directory: ./api
+        run: npx prisma generate
 
       - name: Build
         working-directory: ./api
@@ -33,8 +43,55 @@ jobs:
         working-directory: ./api
         run: npm run lint || true
 
-  build-web:
-    name: Build Web
+  api-test:
+    name: API - Tests
+    runs-on: ubuntu-latest
+    needs: api-build
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: api/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./api
+        run: npm ci
+
+      - name: Generate Prisma Client
+        working-directory: ./api
+        run: npx prisma generate
+
+      - name: Run tests
+        working-directory: ./api
+        run: npm test || true
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+          JWT_SECRET: test-secret
+
+  # ===================
+  # Web Build & Test
+  # ===================
+  web-build:
+    name: Web - Build & Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -43,7 +100,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: web/package-lock.json
 
@@ -54,15 +111,43 @@ jobs:
       - name: Build
         working-directory: ./web
         run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: https://example.com/api
 
       - name: Lint
         working-directory: ./web
         run: npm run lint || true
 
-  docker-build:
-    name: Build Docker Images
+  # ===================
+  # Security Scan
+  # ===================
+  security-scan:
+    name: Security Audit
     runs-on: ubuntu-latest
-    needs: [build-api, build-web]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Audit API dependencies
+        working-directory: ./api
+        run: npm audit --audit-level=high || true
+
+      - name: Audit Web dependencies
+        working-directory: ./web
+        run: npm audit --audit-level=high || true
+
+  # ===================
+  # Docker Build Test
+  # ===================
+  docker-build:
+    name: Docker - Build Images
+    runs-on: ubuntu-latest
+    needs: [api-build, web-build]
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
@@ -76,7 +161,7 @@ jobs:
         with:
           context: ./api
           push: false
-          tags: cloud-proxmox-api:latest
+          tags: cloud-proxmox-api:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -85,6 +170,23 @@ jobs:
         with:
           context: ./web
           push: false
-          tags: cloud-proxmox-web:latest
+          tags: cloud-proxmox-web:test
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://example.com/api
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # ===================
+  # Notify on Failure
+  # ===================
+  notify-failure:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: [api-build, api-test, web-build, docker-build]
+    if: failure() && github.ref == 'refs/heads/main'
+    steps:
+      - name: Send Discord notification
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d '{"content": "❌ **Build Failed** on `${{ github.repository }}`\n\nBranch: `${{ github.ref_name }}`\nCommit: `${{ github.sha }}`\n\n[View Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"}' \
+            ${{ secrets.DISCORD_WEBHOOK_URL }} || true
