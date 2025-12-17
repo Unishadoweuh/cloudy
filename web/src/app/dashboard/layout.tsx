@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { GlobalSearch } from "@/components/GlobalSearch";
 import { useLanguage } from "@/lib/language-context";
 import { getInstances, getMe } from "@/lib/api";
 import type { Instance } from "@/lib/types";
@@ -233,7 +234,10 @@ export default function DashboardLayout({
             {/* Main Content */}
             <main className="flex-1 ml-64">
                 <div className="p-8">
-                    <Breadcrumbs />
+                    <div className="flex items-center justify-between mb-4">
+                        <Breadcrumbs />
+                        <GlobalSearch />
+                    </div>
                     {children}
                 </div>
             </main>
