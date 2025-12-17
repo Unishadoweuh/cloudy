@@ -33,13 +33,22 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
 
       - name: Deploy via SSH
+        env:
+          SSH_HOST: ${{ secrets.DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.DEPLOY_USER }}
+          SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          API_PORT: ${{ vars.API_PORT || '3001' }}
+          WEB_PORT: ${{ vars.WEB_PORT || '3000' }}
         run: |
-          ssh -i ~/.ssh/deploy_key -p ${{ secrets.DEPLOY_SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'DEPLOY_SCRIPT'
+          ssh -i ~/.ssh/deploy_key -p ${SSH_PORT:-22} -o StrictHostKeyChecking=no -o BatchMode=yes ${SSH_USER}@${SSH_HOST} << DEPLOY_SCRIPT
           set -e
           echo "🚀 Starting deployment..."
           
           # Navigate to project directory
-          cd ${{ vars.DEPLOY_PATH }}
+          cd ${DEPLOY_PATH}
           
           # Pull latest code
           echo "⬇️ Pulling latest code..."
@@ -47,7 +56,7 @@ jobs:
           
           # Backup database
           echo "📦 Creating database backup..."
-          docker compose -f docker-compose.prod.yml exec -T db pg_dump -U ${{ secrets.POSTGRES_USER }} ${{ secrets.POSTGRES_DB }} > backup_$(date +%Y%m%d_%H%M%S).sql 2>/dev/null || echo "No existing DB to backup"
+          docker compose -f docker-compose.prod.yml exec -T db pg_dump -U ${POSTGRES_USER} ${POSTGRES_DB} > backup_\$(date +%Y%m%d_%H%M%S).sql 2>/dev/null || echo "No existing DB to backup"
           
           # Build and restart services
           echo "🔨 Building and restarting services..."
@@ -64,14 +73,14 @@ jobs:
           # Health checks
           echo "🏥 Running health checks..."
           
-          if curl -sf http://localhost:${{ vars.API_PORT }}/health > /dev/null 2>&1 || curl -sf http://localhost:${{ vars.API_PORT }}/ > /dev/null 2>&1; then
+          if curl -sf http://localhost:${API_PORT:-3001}/health > /dev/null 2>&1 || curl -sf http://localhost:${API_PORT:-3001}/ > /dev/null 2>&1; then
             echo "✅ API is healthy"
           else
             echo "⚠️ API check inconclusive, checking logs..."
             docker compose -f docker-compose.prod.yml logs --tail=20 api
           fi
           
-          if curl -sf http://localhost:${{ vars.WEB_PORT }}/ > /dev/null 2>&1; then
+          if curl -sf http://localhost:${WEB_PORT:-3000}/ > /dev/null 2>&1; then
             echo "✅ Web is healthy"
           else
             echo "⚠️ Web check inconclusive, checking logs..."
