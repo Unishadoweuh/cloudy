@@ -54,9 +54,9 @@ jobs:
           echo "⬇️ Pulling latest code..."
           git pull origin main
           
-          # Backup database
+          # Backup database (skip if db not running)
           echo "📦 Creating database backup..."
-          docker compose -f docker-compose.prod.yml exec -T db pg_dump -U ${POSTGRES_USER} ${POSTGRES_DB} > backup_\$(date +%Y%m%d_%H%M%S).sql 2>/dev/null || echo "No existing DB to backup"
+          (docker compose -f docker-compose.prod.yml exec -T db pg_dump -U ${POSTGRES_USER} ${POSTGRES_DB} > backup_\$(date +%Y%m%d_%H%M%S).sql 2>/dev/null) || echo "No existing DB to backup"
           
           # Build and restart services
           echo "🔨 Building and restarting services..."
