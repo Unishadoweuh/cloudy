@@ -126,9 +126,9 @@ function InstanceCard({ instance }: { instance: Instance }) {
         <Card
             className={cn(
                 "relative overflow-hidden cursor-pointer transition-all duration-300",
-                "bg-gradient-to-br from-slate-800/50 to-slate-900/50",
+                "glass card-hover-glow",
                 "border-slate-700/50 hover:border-slate-600/50",
-                "hover:scale-[1.02]"
+                "hover:scale-[1.02] hover:shadow-lg hover:shadow-cyan-500/5"
             )}
             onClick={() => router.push(`/dashboard/instances/${instance.vmid}`)}
         >
@@ -667,7 +667,7 @@ export default function InstancesPage() {
                     </CardContent>
                 </Card>
             ) : viewMode === 'grid' ? (
-                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 stagger-children">
                     {filteredInstances.map((instance: Instance) => (
                         <InstanceCard key={instance.id || instance.vmid} instance={instance} />
                     ))}
