@@ -1,14 +1,17 @@
 import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, Request, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ProxmoxService } from '../proxmox/proxmox.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { BillingService } from '../billing/billing.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { BillingMode } from '@prisma/client';
 
 @Controller('compute')
 @UseGuards(JwtAuthGuard)
 export class ComputeController {
     constructor(
         private readonly proxmoxService: ProxmoxService,
-        private readonly notificationsService: NotificationsService
+        private readonly notificationsService: NotificationsService,
+        private readonly billingService: BillingService
     ) { }
 
     @Get('instances')
@@ -91,6 +94,21 @@ export class ComputeController {
             throw new BadRequestException(`Quota mémoire dépassé. Disponible: ${user.maxMemory - usage.memory} MB, demandé: ${requestedMemory} MB. (Limite: ${user.maxMemory} MB)`);
         }
 
+        // 3. Check Credit Balance
+        const requestedDisk = parseInt(body.disk) || 20;
+        const billingMode: BillingMode = body.billingMode === 'RESERVED' ? 'RESERVED' : 'PAYG';
+        const estimate = await this.billingService.getEstimate(requestedCores, requestedMemory, requestedDisk);
+        const requiredCredits = billingMode === 'RESERVED' ? estimate.monthly.total : estimate.hourly.total;
+
+        const hasCredits = await this.billingService.hasSufficientCredits(user.id, requiredCredits);
+        if (!hasCredits) {
+            const balance = await this.billingService.getBalance(user.id);
+            throw new BadRequestException(
+                `Crédits insuffisants. Solde: €${balance.balance.toFixed(2)}, Requis: €${requiredCredits.toFixed(2)}. ` +
+                `Contactez un administrateur pour obtenir des crédits.`
+            );
+        }
+
         let result;
         const tag = `owner-${user.id}`;
 
@@ -108,6 +126,34 @@ export class ComputeController {
             `Created ${body.type} instance "${body.name}". Task: ${result.task}`,
             'success'
         );
+
+        // 4. Start usage tracking
+        try {
+            await this.billingService.startUsageTracking(
+                user.id,
+                result.vmid,
+                body.node,
+                body.type || 'qemu',
+                body.name,
+                requestedCores,
+                requestedMemory,
+                requestedDisk,
+                billingMode
+            );
+
+            // Deduct initial credit for reserved instances
+            if (billingMode === 'RESERVED') {
+                await this.billingService.deductCredits(
+                    user.id,
+                    estimate.monthly.total,
+                    `Monthly reservation: ${body.name}`,
+                    { vmid: result.vmid, billingMode }
+                );
+            }
+        } catch (err) {
+            // Log but don't fail the instance creation
+            console.error('Failed to start billing tracking:', err.message);
+        }
 
         return result;
     }

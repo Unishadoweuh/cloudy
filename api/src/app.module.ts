@@ -13,6 +13,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PbsModule } from './pbs/pbs.module';
 import { VncModule } from './vnc/vnc.module';
+import { BillingModule } from './billing/billing.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { VncModule } from './vnc/vnc.module';
     NotificationsModule,
     PbsModule,
     VncModule,
+    BillingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

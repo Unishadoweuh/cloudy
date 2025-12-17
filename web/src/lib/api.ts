@@ -665,3 +665,194 @@ export async function rollbackSnapshot(
         return handleApiError(error);
     }
 }
+
+// ==================== BILLING API ====================
+
+export interface BillingSummary {
+    balance: number;
+    currency: string;
+    activeInstances: number;
+    hourlyBurnRate: number;
+    estimatedRemainingHours: number | null;
+    recentTransactions: Transaction[];
+    activeUsage: UsageRecord[];
+}
+
+export interface Transaction {
+    id: string;
+    userId: string;
+    type: 'CREDIT' | 'DEBIT' | 'REFUND' | 'ADJUSTMENT';
+    amount: number;
+    balance: number;
+    description: string;
+    metadata?: Record<string, any>;
+    createdAt: string;
+}
+
+export interface UsageRecord {
+    id: string;
+    vmid: number;
+    node: string;
+    vmType: string;
+    vmName?: string;
+    billingMode: 'PAYG' | 'RESERVED';
+    cores: number;
+    memoryMB: number;
+    diskGB: number;
+    hourlyRate: number;
+    monthlyRate?: number;
+    startedAt: string;
+    stoppedAt?: string;
+    isActive: boolean;
+}
+
+export interface CreditBalance {
+    id: string;
+    userId: string;
+    balance: number;
+    currency: string;
+}
+
+export interface PricingTier {
+    id: string;
+    name: string;
+    description?: string;
+    cpuHourly: number;
+    memoryHourly: number;
+    diskHourly: number;
+    cpuMonthly: number;
+    memoryMonthly: number;
+    diskMonthly: number;
+    isDefault: boolean;
+}
+
+export interface CostEstimate {
+    hourly: {
+        total: number;
+        breakdown: { cpu: number; memory: number; disk: number };
+    };
+    monthly: {
+        total: number;
+        breakdown: { cpu: number; memory: number; disk: number };
+    };
+    paygEstimatedMonthly: number;
+    savings: number;
+}
+
+/**
+ * Get billing summary for current user
+ */
+export async function getBillingSummary(): Promise<BillingSummary> {
+    try {
+        const response = await api.get<BillingSummary>('/billing/summary');
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Get credit balance
+ */
+export async function getCreditBalance(): Promise<CreditBalance> {
+    try {
+        const response = await api.get<CreditBalance>('/billing/balance');
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Get transaction history
+ */
+export async function getTransactions(limit = 50): Promise<Transaction[]> {
+    try {
+        const response = await api.get<Transaction[]>('/billing/transactions', {
+            params: { limit }
+        });
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Get usage history
+ */
+export async function getUsageHistory(limit = 50): Promise<UsageRecord[]> {
+    try {
+        const response = await api.get<UsageRecord[]>('/billing/usage', {
+            params: { limit }
+        });
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Get active usage
+ */
+export async function getActiveUsage(): Promise<UsageRecord[]> {
+    try {
+        const response = await api.get<UsageRecord[]>('/billing/usage/active');
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Get cost estimate
+ */
+export async function getCostEstimate(cores: number, memory: number, disk: number): Promise<CostEstimate> {
+    try {
+        const response = await api.get<CostEstimate>('/billing/estimate', {
+            params: { cores, memory, disk }
+        });
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Get pricing tiers
+ */
+export async function getPricing(): Promise<PricingTier[]> {
+    try {
+        const response = await api.get<PricingTier[]>('/billing/pricing');
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Add credits to user (admin only)
+ */
+export async function addCredits(userId: string, amount: number, description?: string): Promise<{ balance: number; transaction: Transaction }> {
+    try {
+        const response = await api.post('/billing/credits', {
+            userId,
+            amount,
+            description
+        });
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Get all user balances (admin only)
+ */
+export async function getAllBalances(): Promise<Array<CreditBalance & { user: { id: string; username: string; email?: string; role: string } }>> {
+    try {
+        const response = await api.get('/billing/admin/balances');
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}

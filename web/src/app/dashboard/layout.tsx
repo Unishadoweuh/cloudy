@@ -22,6 +22,7 @@ import {
     BarChart3,
     Bell,
     Archive,
+    Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NotificationsPopover } from "@/components/notifications-popover";
@@ -83,6 +84,11 @@ export default function DashboardLayout({
             name: 'Sauvegardes',
             href: "/dashboard/backups",
             icon: Archive,
+        },
+        {
+            name: 'Facturation',
+            href: "/dashboard/billing",
+            icon: Wallet,
         },
     ];
 

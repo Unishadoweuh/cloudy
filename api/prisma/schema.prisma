@@ -16,6 +16,18 @@ enum Role {
   ADMIN
 }
 
+enum BillingMode {
+  PAYG      // Pay-as-you-go (hourly)
+  RESERVED  // Monthly commitment (cheaper)
+}
+
+enum TransactionType {
+  CREDIT      // Admin adds credits
+  DEBIT       // Usage charge
+  REFUND      // Refund on deletion
+  ADJUSTMENT  // Manual adjustment
+}
+
 model User {
   id        String   @id @default(uuid())
   discordId String?  @unique
@@ -37,7 +49,10 @@ model User {
   tenantId  String?
   tenant    Tenant?  @relation(fields: [tenantId], references: [id])
 
-  notifications Notification[]
+  notifications  Notification[]
+  creditBalance  CreditBalance?
+  transactions   Transaction[]
+  usageRecords   UsageRecord[]
 }
 
 model Notification {
@@ -89,4 +104,82 @@ model Instance {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ==================== BILLING MODELS ====================
+
+// Pricing configuration (admin-managed)
+model Pricing {
+  id          String   @id @default(uuid())
+  name        String   // "Standard", "Premium", etc.
+  description String?
+  
+  // Hourly rates (PAYG) in EUR
+  cpuHourly    Float   @default(0.01)  // €/core/hour
+  memoryHourly Float   @default(0.005) // €/GB/hour  
+  diskHourly   Float   @default(0.001) // €/GB/hour
+  
+  // Monthly rates (Reserved - ~30% cheaper)
+  cpuMonthly    Float  @default(5.0)   // €/core/month
+  memoryMonthly Float  @default(2.5)   // €/GB/month
+  diskMonthly   Float  @default(0.5)   // €/GB/month
+  
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// User credit balance
+model CreditBalance {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance   Float    @default(0)
+  currency  String   @default("EUR")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Transaction history
+model Transaction {
+  id          String          @id @default(uuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        TransactionType
+  amount      Float           // Positive for credits, negative for debits
+  balance     Float           // Balance after transaction
+  description String
+  metadata    Json?           // Additional info (vmid, period, etc.)
+  createdAt   DateTime        @default(now())
+}
+
+// Usage record (for billing)
+model UsageRecord {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vmid        Int
+  node        String
+  vmType      String      // qemu or lxc
+  vmName      String?
+  billingMode BillingMode @default(PAYG)
+  
+  // Resources
+  cores       Int
+  memoryMB    Int
+  diskGB      Int
+  
+  // Timing
+  startedAt   DateTime    @default(now())
+  stoppedAt   DateTime?
+  lastBilledAt DateTime?
+  
+  // Pricing snapshot (frozen at creation)
+  hourlyRate  Float       // Total hourly rate
+  monthlyRate Float?      // For reserved instances
+  
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 }
