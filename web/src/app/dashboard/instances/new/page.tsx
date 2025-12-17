@@ -296,7 +296,19 @@ export default function CreateInstancePage() {
             <StepIndicator currentStep={currentStep} />
 
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <form
+                    onSubmit={form.handleSubmit(onSubmit)}
+                    className="space-y-6"
+                    onKeyDown={(e) => {
+                        // Prevent Enter from submitting the form unless we're on the last step
+                        if (e.key === 'Enter' && currentStep < steps.length - 1) {
+                            e.preventDefault();
+                            if (canProceedFromStep(currentStep)) {
+                                nextStep();
+                            }
+                        }
+                    }}
+                >
                     {/* Step 0: Type Selection */}
                     {currentStep === 0 && (
                         <Card className="bg-slate-800/50 border-slate-700/50">
