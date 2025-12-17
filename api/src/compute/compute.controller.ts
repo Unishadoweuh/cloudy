@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, Request, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ProxmoxService } from '../proxmox/proxmox.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -73,8 +73,7 @@ export class ComputeController {
 
         // 1. Check Allowed Nodes
         if (user.allowedNodes && user.allowedNodes.length > 0 && !user.allowedNodes.includes(body.node)) {
-            // Throwing simple error for now, ideally BadRequestException
-            throw new Error(`You are not allowed to deploy to node ${body.node}. Allowed: ${user.allowedNodes.join(', ')}`);
+            throw new ForbiddenException(`Vous n'êtes pas autorisé à déployer sur le nœud "${body.node}". Nœuds autorisés: ${user.allowedNodes.join(', ')}`);
         }
 
         // 2. Check Resource Quotas
@@ -82,14 +81,15 @@ export class ComputeController {
         const requestedCores = parseInt(body.cores) || 1;
         const requestedMemory = parseInt(body.memory) || 512;
 
-        if (usage.instances >= user.maxInstances) throw new Error(`Instance quota exceeded. Max: ${user.maxInstances}`);
-        // if (usage.cpu + requestedCores > user.maxCpu) throw new Error(`CPU quota exceeded. Max: ${user.maxCpu}, Used: ${usage.cpu}, Requested: ${requestedCores}`);
-        // if (usage.memory + requestedMemory > user.maxMemory) throw new Error(`Memory quota exceeded. Max: ${user.maxMemory}MB, Used: ${usage.memory}MB`);
-        // Commenting out detailed CPU/Mem checks for now to avoid blocking if usage calc is slightly off initially, 
-        // but strictly enforcing maxInstances is a good start. 
-        // Actually, let's enforce them.
-        if (usage.cpu + requestedCores > user.maxCpu) throw new Error(`CPU quota exceeded (${user.maxCpu} Cores)`);
-        if (usage.memory + requestedMemory > user.maxMemory) throw new Error(`Memory quota exceeded (${user.maxMemory} MB)`);
+        if (usage.instances >= user.maxInstances) {
+            throw new BadRequestException(`Quota d'instances atteint (${usage.instances}/${user.maxInstances}). Supprimez une instance existante ou demandez une augmentation de quota.`);
+        }
+        if (usage.cpu + requestedCores > user.maxCpu) {
+            throw new BadRequestException(`Quota CPU dépassé. Disponible: ${user.maxCpu - usage.cpu} cœurs, demandé: ${requestedCores}. (Limite: ${user.maxCpu} cœurs)`);
+        }
+        if (usage.memory + requestedMemory > user.maxMemory) {
+            throw new BadRequestException(`Quota mémoire dépassé. Disponible: ${user.maxMemory - usage.memory} MB, demandé: ${requestedMemory} MB. (Limite: ${user.maxMemory} MB)`);
+        }
 
         let result;
         const tag = `owner-${user.id}`;

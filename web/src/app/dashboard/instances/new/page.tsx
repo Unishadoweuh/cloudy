@@ -641,8 +641,18 @@ export default function CreateInstancePage() {
                     </div>
 
                     {createMutation.isError && (
-                        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400">
-                            Failed to create instance: {(createMutation.error as Error)?.message}
+                        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-300 flex items-start gap-3">
+                            <div className="p-2 bg-red-500/20 rounded-lg shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="12" y1="8" x2="12" y2="12" />
+                                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="font-semibold text-red-400 mb-1">Impossible de créer l&apos;instance</p>
+                                <p className="text-sm">{(createMutation.error as Error)?.message?.replace('API Error: ', '') || 'Une erreur inattendue s\'est produite.'}</p>
+                            </div>
                         </div>
                     )}
                 </form>
