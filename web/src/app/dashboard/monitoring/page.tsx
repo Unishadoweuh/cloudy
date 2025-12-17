@@ -2,8 +2,8 @@
 
 import { useState, useMemo } from 'react';
 import { useQuery, useQueries } from '@tanstack/react-query';
-import { getClusterStats, getNodes, getNodeMetrics } from '@/lib/api';
-import type { ClusterStats, Node, RrdDataPoint } from '@/lib/types';
+import { getClusterStats, getNodes, getNodeMetrics, getMe, getInstances, getInstanceMetrics } from '@/lib/api';
+import type { ClusterStats, Node, RrdDataPoint, Instance } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -323,33 +323,61 @@ function LoadingSkeleton() {
 export default function MonitoringPage() {
     const { t } = useLanguage();
     const [timeframe, setTimeframe] = useState<'hour' | 'day' | 'week'>('hour');
+    const [viewMode, setViewMode] = useState<'personal' | 'cluster'>('personal');
 
+    // Check if user is admin
+    const { data: currentUser } = useQuery({
+        queryKey: ['me'],
+        queryFn: getMe,
+    });
+    const isAdmin = currentUser?.role === 'ADMIN';
+
+    // Fetch user's instances
+    const { data: instances } = useQuery({
+        queryKey: ['instances'],
+        queryFn: () => getInstances(),
+    });
+    const userInstances = instances?.filter((i: Instance) => !i.template) || [];
+
+    // Cluster stats (admin only when viewing cluster)
     const { data: clusterStats, isLoading: statsLoading, refetch: refetchStats } = useQuery({
         queryKey: ['cluster-stats'],
         queryFn: getClusterStats,
         refetchInterval: 30000,
+        enabled: isAdmin && viewMode === 'cluster',
     });
 
     const { data: nodes, isLoading: nodesLoading, refetch: refetchNodes } = useQuery({
         queryKey: ['nodes'],
         queryFn: getNodes,
+        enabled: isAdmin && viewMode === 'cluster',
     });
 
     const nodeNames = useMemo(() => (nodes || []).map((n: Node) => n.node), [nodes]);
 
-    // Fetch metrics for ALL nodes using useQueries
+    // Fetch metrics for ALL nodes using useQueries (admin cluster view only)
     const metricsQueries = useQueries({
-        queries: nodeNames.map((nodeName: string) => ({
+        queries: (isAdmin && viewMode === 'cluster' ? nodeNames : []).map((nodeName: string) => ({
             queryKey: ['node-metrics', nodeName, timeframe],
             queryFn: () => getNodeMetrics(nodeName, timeframe),
-            enabled: !!nodeName,
+            enabled: !!nodeName && isAdmin && viewMode === 'cluster',
             refetchInterval: 60000,
         })),
     });
 
-    const isFetching = metricsQueries.some(q => q.isFetching);
+    // Fetch metrics for user's instances (personal view)
+    const instanceMetricsQueries = useQueries({
+        queries: (viewMode === 'personal' ? userInstances : []).map((instance: Instance) => ({
+            queryKey: ['instance-metrics', instance.vmid, instance.node, instance.type, timeframe],
+            queryFn: () => getInstanceMetrics(instance.vmid, instance.node, instance.type as 'qemu' | 'lxc', timeframe),
+            enabled: !!instance.vmid && viewMode === 'personal',
+            refetchInterval: 60000,
+        })),
+    });
 
-    // Combine all node metrics into a single object
+    const isFetching = metricsQueries.some(q => q.isFetching) || instanceMetricsQueries.some(q => q.isFetching);
+
+    // Combine all node metrics into a single object (cluster view)
     const allMetrics = useMemo(() => {
         const result: Record<string, RrdDataPoint[]> = {};
         metricsQueries.forEach((query, index) => {
@@ -360,21 +388,50 @@ export default function MonitoringPage() {
         return result;
     }, [metricsQueries, nodeNames]);
 
+    // Combine all instance metrics (personal view)
+    const instanceMetrics = useMemo(() => {
+        const result: Record<string, RrdDataPoint[]> = {};
+        instanceMetricsQueries.forEach((query, index) => {
+            if (query.data && userInstances[index]) {
+                const instance = userInstances[index];
+                result[instance.name || `VM-${instance.vmid}`] = query.data;
+            }
+        });
+        return result;
+    }, [instanceMetricsQueries, userInstances]);
+
+    const instanceNames = useMemo(() =>
+        userInstances.map((i: Instance) => i.name || `VM-${i.vmid}`),
+        [userInstances]
+    );
+
     const isLoading = statsLoading || nodesLoading;
 
     const refetchAll = () => {
-        refetchStats();
-        refetchNodes();
-        metricsQueries.forEach(q => q.refetch());
+        if (isAdmin && viewMode === 'cluster') {
+            refetchStats();
+            refetchNodes();
+            metricsQueries.forEach(q => q.refetch());
+        } else {
+            instanceMetricsQueries.forEach(q => q.refetch());
+        }
     };
 
+    // Calculate stats based on view mode
     const cpuPercent = clusterStats ? clusterStats.usedCpu * 100 : 0;
     const memPercent = clusterStats ? (clusterStats.usedMem / clusterStats.totalMem) * 100 : 0;
     const diskPercent = clusterStats ? (clusterStats.usedDisk / clusterStats.totalDisk) * 100 : 0;
 
-    if (isLoading) return <LoadingSkeleton />;
+    // Calculate user's instance stats
+    const userRunningCount = userInstances.filter((i: Instance) => i.status === 'running').length;
+    const userTotalCpu = userInstances.reduce((acc: number, i: Instance) => acc + (i.maxcpu || 0), 0);
+    const userTotalMem = userInstances.reduce((acc: number, i: Instance) => acc + (i.maxmem || 0), 0);
 
-    const hasMetrics = Object.keys(allMetrics).length > 0;
+    if (isLoading && isAdmin && viewMode === 'cluster') return <LoadingSkeleton />;
+
+    const hasMetrics = viewMode === 'cluster'
+        ? Object.keys(allMetrics).length > 0
+        : Object.keys(instanceMetrics).length > 0;
 
     return (
         <div className="space-y-6">
@@ -382,9 +439,40 @@ export default function MonitoringPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-white">{t('monitoring.title')}</h1>
-                    <p className="text-slate-500 text-sm">{t('monitoring.subtitle')}</p>
+                    <p className="text-slate-500 text-sm">
+                        {viewMode === 'personal'
+                            ? 'Métriques de vos instances'
+                            : t('monitoring.subtitle')}
+                    </p>
                 </div>
                 <div className="flex items-center gap-3">
+                    {/* Admin View Toggle */}
+                    {isAdmin && (
+                        <div className="flex bg-slate-900/50 border border-slate-700 rounded-lg p-0.5">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setViewMode('personal')}
+                                className={cn(
+                                    "h-8 px-3 rounded-md text-xs",
+                                    viewMode === 'personal' ? "bg-slate-700 text-white" : "text-slate-500 hover:text-white"
+                                )}
+                            >
+                                Mes instances
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setViewMode('cluster')}
+                                className={cn(
+                                    "h-8 px-3 rounded-md text-xs",
+                                    viewMode === 'cluster' ? "bg-slate-700 text-white" : "text-slate-500 hover:text-white"
+                                )}
+                            >
+                                Cluster
+                            </Button>
+                        </div>
+                    )}
                     <Select value={timeframe} onValueChange={(v) => setTimeframe(v as typeof timeframe)}>
                         <SelectTrigger className="w-36 bg-slate-900/50 border-slate-700 text-slate-300">
                             <SelectValue />
@@ -407,43 +495,79 @@ export default function MonitoringPage() {
                 </div>
             </div>
 
-            {/* Cluster Stats */}
-            <div className="grid gap-4 md:grid-cols-4">
-                <StatsCard
-                    title={t('monitoring.cpuUsage')}
-                    value={`${cpuPercent.toFixed(1)}%`}
-                    subtitle={`${clusterStats?.totalCpu || 0} ${t('monitoring.totalCores')}`}
-                    icon={Cpu}
-                    color="text-cyan-400"
-                    percent={cpuPercent}
-                />
-                <StatsCard
-                    title={t('monitoring.memoryUsage')}
-                    value={formatBytes(clusterStats?.usedMem || 0)}
-                    subtitle={`/ ${formatBytes(clusterStats?.totalMem || 0)}`}
-                    icon={MemoryStick}
-                    color="text-violet-400"
-                    percent={memPercent}
-                />
-                <StatsCard
-                    title={t('monitoring.diskUsage')}
-                    value={formatBytes(clusterStats?.usedDisk || 0)}
-                    subtitle={`/ ${formatBytes(clusterStats?.totalDisk || 0)}`}
-                    icon={HardDrive}
-                    color="text-emerald-400"
-                    percent={diskPercent}
-                />
-                <StatsCard
-                    title={t('monitoring.runningInstances')}
-                    value={clusterStats?.runningVms || 0}
-                    subtitle={`/ ${clusterStats?.instances || 0} total`}
-                    icon={Activity}
-                    color="text-amber-400"
-                />
-            </div>
+            {/* Personal View - User's instances stats */}
+            {viewMode === 'personal' && (
+                <div className="grid gap-4 md:grid-cols-4">
+                    <StatsCard
+                        title="Instances actives"
+                        value={userRunningCount}
+                        subtitle={`/ ${userInstances.length} total`}
+                        icon={Activity}
+                        color="text-emerald-400"
+                    />
+                    <StatsCard
+                        title="vCPUs alloués"
+                        value={userTotalCpu}
+                        subtitle="Cœurs virtuels"
+                        icon={Cpu}
+                        color="text-cyan-400"
+                    />
+                    <StatsCard
+                        title="Mémoire allouée"
+                        value={formatBytes(userTotalMem)}
+                        subtitle="RAM totale"
+                        icon={MemoryStick}
+                        color="text-violet-400"
+                    />
+                    <StatsCard
+                        title="Instances"
+                        value={userInstances.length}
+                        subtitle={`${userInstances.filter((i: Instance) => i.type === 'qemu').length} VMs, ${userInstances.filter((i: Instance) => i.type === 'lxc').length} LXC`}
+                        icon={Server}
+                        color="text-amber-400"
+                    />
+                </div>
+            )}
 
-            {/* Multi-Node Charts */}
-            {hasMetrics && (
+            {/* Cluster View - Full cluster stats (admin only) */}
+            {viewMode === 'cluster' && isAdmin && (
+                <div className="grid gap-4 md:grid-cols-4">
+                    <StatsCard
+                        title={t('monitoring.cpuUsage')}
+                        value={`${cpuPercent.toFixed(1)}%`}
+                        subtitle={`${clusterStats?.totalCpu || 0} ${t('monitoring.totalCores')}`}
+                        icon={Cpu}
+                        color="text-cyan-400"
+                        percent={cpuPercent}
+                    />
+                    <StatsCard
+                        title={t('monitoring.memoryUsage')}
+                        value={formatBytes(clusterStats?.usedMem || 0)}
+                        subtitle={`/ ${formatBytes(clusterStats?.totalMem || 0)}`}
+                        icon={MemoryStick}
+                        color="text-violet-400"
+                        percent={memPercent}
+                    />
+                    <StatsCard
+                        title={t('monitoring.diskUsage')}
+                        value={formatBytes(clusterStats?.usedDisk || 0)}
+                        subtitle={`/ ${formatBytes(clusterStats?.totalDisk || 0)}`}
+                        icon={HardDrive}
+                        color="text-emerald-400"
+                        percent={diskPercent}
+                    />
+                    <StatsCard
+                        title={t('monitoring.runningInstances')}
+                        value={clusterStats?.runningVms || 0}
+                        subtitle={`/ ${clusterStats?.instances || 0} total`}
+                        icon={Activity}
+                        color="text-amber-400"
+                    />
+                </div>
+            )}
+
+            {/* Multi-Node Charts (cluster view only) */}
+            {viewMode === 'cluster' && isAdmin && hasMetrics && (
                 <div className="grid gap-4 md:grid-cols-2">
                     <MultiNodeChart
                         title={`${t('monitoring.cpuUsage')} - Tous les serveurs`}
@@ -464,13 +588,35 @@ export default function MonitoringPage() {
                 </div>
             )}
 
-            {/* Disk Usage Per Server */}
-            {nodes && nodes.length > 0 && (
+            {/* Instance Charts (personal view) */}
+            {viewMode === 'personal' && hasMetrics && (
+                <div className="grid gap-4 md:grid-cols-2">
+                    <MultiNodeChart
+                        title="CPU - Mes instances"
+                        allMetrics={instanceMetrics}
+                        nodeNames={instanceNames}
+                        dataKey="cpu"
+                        formatter={(v) => `${(v * 100).toFixed(1)}%`}
+                        yAxisFormatter={(v) => `${(v * 100).toFixed(0)}%`}
+                    />
+                    <MultiNodeChart
+                        title="Mémoire - Mes instances"
+                        allMetrics={instanceMetrics}
+                        nodeNames={instanceNames}
+                        dataKey="memused"
+                        formatter={(v) => formatBytes(v)}
+                        yAxisFormatter={(v) => formatBytes(v)}
+                    />
+                </div>
+            )}
+
+            {/* Disk Usage Per Server (cluster view only) */}
+            {viewMode === 'cluster' && isAdmin && nodes && nodes.length > 0 && (
                 <DiskUsageCard nodes={nodes} />
             )}
 
-            {/* Network Traffic */}
-            {hasMetrics && (
+            {/* Network Traffic (cluster view only) */}
+            {viewMode === 'cluster' && isAdmin && hasMetrics && (
                 <Card className="bg-slate-800/30 border-slate-700/30">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-slate-300">{t('monitoring.networkTraffic')} - Tous les serveurs</CardTitle>
@@ -529,15 +675,28 @@ export default function MonitoringPage() {
                 </Card>
             )}
 
-            {/* Node Status */}
-            <div>
-                <h2 className="text-lg font-semibold text-white mb-3">{t('monitoring.clusterOverview')}</h2>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {(nodes || []).map((node: Node, index: number) => (
-                        <NodeStatusCard key={node.node} node={node} colorIndex={index} />
-                    ))}
+            {/* Node Status (cluster view only) */}
+            {viewMode === 'cluster' && isAdmin && (
+                <div>
+                    <h2 className="text-lg font-semibold text-white mb-3">{t('monitoring.clusterOverview')}</h2>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {(nodes || []).map((node: Node, index: number) => (
+                            <NodeStatusCard key={node.node} node={node} colorIndex={index} />
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
+
+            {/* Empty state for personal view */}
+            {viewMode === 'personal' && userInstances.length === 0 && (
+                <Card className="bg-slate-800/30 border-slate-700/30">
+                    <CardContent className="flex flex-col items-center justify-center py-16">
+                        <Server className="h-12 w-12 text-slate-600 mb-4" />
+                        <h3 className="text-lg font-medium text-white mb-2">Aucune instance</h3>
+                        <p className="text-slate-500 text-sm">Créez votre première instance pour voir les métriques</p>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }
