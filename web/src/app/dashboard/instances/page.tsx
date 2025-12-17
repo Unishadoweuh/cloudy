@@ -45,8 +45,6 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { FadeIn } from '@/components/FadeIn';
-import { InstancesPageSkeleton } from '@/components/Skeletons';
 
 function formatBytes(bytes: number): string {
     if (bytes === 0) return '0 B';
@@ -341,6 +339,67 @@ function InstanceTableRow({ instance, index, onAction, onDelete }: { instance: I
     );
 }
 
+function LoadingSkeleton() {
+    return (
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                    <div className="h-7 w-32 bg-slate-700/30 rounded-lg animate-pulse" />
+                    <div className="h-4 w-64 bg-slate-700/30 rounded-lg animate-pulse" />
+                </div>
+                <div className="flex gap-2">
+                    <div className="h-10 w-10 bg-slate-700/30 rounded-lg animate-pulse" />
+                    <div className="h-10 w-36 bg-slate-700/30 rounded-lg animate-pulse" />
+                </div>
+            </div>
+
+            {/* Stats */}
+            <div className="grid gap-3 md:grid-cols-4">
+                {[...Array(4)].map((_, i) => (
+                    <div key={i} className="p-5 rounded-xl bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50">
+                        <div className="flex items-center gap-4">
+                            <div className="h-10 w-10 bg-slate-700/30 rounded-lg animate-pulse" />
+                            <div className="space-y-2">
+                                <div className="h-3 w-16 bg-slate-700/30 rounded animate-pulse" />
+                                <div className="h-6 w-10 bg-slate-700/30 rounded animate-pulse" />
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-col md:flex-row gap-3 p-4 bg-slate-800/30 border border-slate-700/30 rounded-lg">
+                <div className="h-10 flex-1 bg-slate-700/30 rounded-lg animate-pulse" />
+                <div className="flex gap-2">
+                    <div className="h-10 w-32 bg-slate-700/30 rounded-lg animate-pulse" />
+                    <div className="h-10 w-32 bg-slate-700/30 rounded-lg animate-pulse" />
+                    <div className="h-10 w-20 bg-slate-700/30 rounded-lg animate-pulse" />
+                </div>
+            </div>
+
+            {/* Table */}
+            <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl overflow-hidden">
+                <div className="space-y-0">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex items-center gap-4 p-4 border-b border-slate-700/30">
+                            <div className="h-10 w-10 bg-slate-700/30 rounded-lg animate-pulse" />
+                            <div className="flex-1 space-y-2">
+                                <div className="h-4 w-32 bg-slate-700/30 rounded animate-pulse" />
+                                <div className="h-3 w-20 bg-slate-700/30 rounded animate-pulse" />
+                            </div>
+                            <div className="h-5 w-16 bg-slate-700/30 rounded-full animate-pulse" />
+                            <div className="h-4 w-24 bg-slate-700/30 rounded animate-pulse" />
+                            <div className="h-8 w-8 bg-slate-700/30 rounded-lg animate-pulse" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function InstancesPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [typeFilter, setTypeFilter] = useState<'all' | 'qemu' | 'lxc'>('all');
@@ -423,7 +482,7 @@ export default function InstancesPage() {
     const stoppedCount = allInstances.filter((i: Instance) => i.status === 'stopped').length;
     const totalCores = allInstances.reduce((acc: number, i: Instance) => acc + (i.maxcpu || 0), 0);
 
-    if (isLoading) return <InstancesPageSkeleton />;
+    if (isLoading) return <LoadingSkeleton />;
 
     if (isError) {
         return (
@@ -442,7 +501,7 @@ export default function InstancesPage() {
     }
 
     return (
-        <FadeIn className="space-y-6" duration={700}>
+        <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
@@ -469,15 +528,15 @@ export default function InstancesPage() {
             </div>
 
             {/* Stats */}
-            <FadeIn delay={100} className="grid gap-3 md:grid-cols-4">
+            <div className="grid gap-3 md:grid-cols-4">
                 <StatsCard title="Total" value={allInstances.length} icon={Server} color="bg-cyan-500" />
                 <StatsCard title="Running" value={runningCount} icon={Activity} color="bg-emerald-500" />
                 <StatsCard title="Stopped" value={stoppedCount} icon={Box} color="bg-amber-500" />
                 <StatsCard title="vCPUs allocated" value={totalCores} icon={Cpu} color="bg-violet-500" />
-            </FadeIn>
+            </div>
 
             {/* Filters Bar */}
-            <FadeIn delay={200} className="flex flex-col md:flex-row gap-3 p-4 bg-slate-800/30 border border-slate-700/30 rounded-lg">
+            <div className="flex flex-col md:flex-row gap-3 p-4 bg-slate-800/30 border border-slate-700/30 rounded-lg">
                 {/* Search */}
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
@@ -546,17 +605,6 @@ export default function InstancesPage() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => setViewMode('list')}
-                            className={cn(
-                                "h-8 w-8 rounded-md",
-                                viewMode === 'list' ? "bg-slate-700 text-white" : "text-slate-500 hover:text-white"
-                            )}
-                        >
-                            <List className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
                             onClick={() => setViewMode('grid')}
                             className={cn(
                                 "h-8 w-8 rounded-md",
@@ -565,72 +613,94 @@ export default function InstancesPage() {
                         >
                             <LayoutGrid className="h-4 w-4" />
                         </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setViewMode('list')}
+                            className={cn(
+                                "h-8 w-8 rounded-md",
+                                viewMode === 'list' ? "bg-slate-700 text-white" : "text-slate-500 hover:text-white"
+                            )}
+                        >
+                            <List className="h-4 w-4" />
+                        </Button>
                     </div>
                 </div>
-            </FadeIn>
+            </div>
+
+            {/* Results info */}
+            {(searchQuery || typeFilter !== 'all' || statusFilter !== 'all') && (
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <span>Showing {filteredInstances.length} of {allInstances.length}</span>
+                    <Button
+                        variant="link"
+                        size="sm"
+                        onClick={() => { setSearchQuery(''); setTypeFilter('all'); setStatusFilter('all'); }}
+                        className="text-slate-400 hover:text-white h-auto p-0"
+                    >
+                        Clear
+                    </Button>
+                </div>
+            )}
 
             {/* Content */}
-            <FadeIn delay={300}>
-                {filteredInstances.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center p-12 text-center bg-slate-800/30 rounded-xl border border-slate-700/30">
+            {filteredInstances.length === 0 ? (
+                <Card className="bg-slate-800/30 border-slate-700/30 border-dashed">
+                    <CardContent className="flex flex-col items-center justify-center py-16">
                         <div className="p-4 bg-slate-800/50 rounded-full mb-4">
                             <Server className="h-8 w-8 text-slate-500" />
                         </div>
-                        <h3 className="text-lg font-medium text-white mb-1">No instances found</h3>
-                        <p className="text-slate-500 max-w-sm">
-                            {searchQuery || typeFilter !== 'all' || statusFilter !== 'all'
-                                ? "No instances match your filters. Try adjusting them."
-                                : "You haven't created any instances yet."}
+                        <h3 className="text-lg font-medium text-white mb-1">
+                            {allInstances.length === 0 ? 'No instances' : 'No results'}
+                        </h3>
+                        <p className="text-slate-500 text-sm mb-4">
+                            {allInstances.length === 0 ? 'Create your first instance' : 'Try different filters'}
                         </p>
-                        {(!searchQuery && typeFilter === 'all' && statusFilter === 'all') && (
-                            <Button asChild className="mt-4 bg-primary hover:bg-primary/90">
+                        {allInstances.length === 0 && (
+                            <Button asChild className="bg-slate-800 hover:bg-slate-700 text-white">
                                 <Link href="/dashboard/instances/new">
                                     <Plus className="mr-2 h-4 w-4" />
-                                    Create your first instance
+                                    Create Instance
                                 </Link>
                             </Button>
                         )}
-                    </div>
-                ) : (
-                    <>
-                        {viewMode === 'grid' ? (
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                {filteredInstances.map((instance: Instance) => (
-                                    <InstanceCard key={instance.id} instance={instance} />
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl overflow-hidden">
-                                <table className="w-full">
-                                    <thead>
-                                        <tr className="bg-slate-800/50 border-b border-slate-700/30">
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-slate-400">Name</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-slate-400">Type</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-slate-400">Node</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-slate-400">Status</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-slate-400">CPU</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-slate-400">RAM</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-slate-400">IP</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-slate-400">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-700/30">
-                                        {filteredInstances.map((instance: Instance, index: number) => (
-                                            <InstanceTableRow
-                                                key={instance.id}
-                                                instance={instance}
-                                                index={index}
-                                                onAction={(action) => handleAction(instance, action)}
-                                                onDelete={() => handleDelete(instance)}
-                                            />
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </>
-                )}
-            </FadeIn>
-        </FadeIn>
+                    </CardContent>
+                </Card>
+            ) : viewMode === 'grid' ? (
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {filteredInstances.map((instance: Instance) => (
+                        <InstanceCard key={instance.id || instance.vmid} instance={instance} />
+                    ))}
+                </div>
+            ) : (
+                <div className="bg-slate-800/30 border border-slate-700/30 rounded-lg overflow-hidden">
+                    <table className="w-full">
+                        <thead>
+                            <tr className="border-b border-slate-700/50">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Instance</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Type</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Node</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">CPU</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Memory</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">IP Address</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-20"></th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-700/30">
+                            {filteredInstances.map((instance: Instance, index: number) => (
+                                <InstanceTableRow
+                                    key={instance.id || instance.vmid}
+                                    instance={instance}
+                                    index={index}
+                                    onAction={(action) => handleAction(instance, action)}
+                                    onDelete={() => handleDelete(instance)}
+                                />
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
     );
 }
