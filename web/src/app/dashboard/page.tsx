@@ -120,6 +120,7 @@ export default function DashboardPage() {
     const runningCount = filteredInstances.filter((i: Instance) => i.status === 'running').length;
     const vmCount = filteredInstances.filter((i: Instance) => i.type === 'qemu').length;
     const lxcCount = filteredInstances.filter((i: Instance) => i.type === 'lxc').length;
+    const nodesCount = nodes?.filter((n) => n.status === 'online').length || 0;
 
     return (
         <div className="space-y-8">
@@ -196,27 +197,107 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* Recent Activity Placeholder */}
-            <div>
-                <h2 className="text-xl font-semibold text-white mb-4">System Status</h2>
-                <Card className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-700/50">
-                    <CardContent className="p-6">
-                        <div className="flex items-center gap-4">
-                            <div className="relative">
-                                <div className="absolute inset-0 bg-emerald-500/30 blur-xl rounded-full" />
-                                <div className="relative p-3 bg-emerald-500/20 rounded-full">
-                                    <Zap className="h-6 w-6 text-emerald-400" />
+            {/* Recent Instances & System Status */}
+            <div className="grid gap-6 md:grid-cols-2">
+                {/* Recent Instances */}
+                <div>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-semibold text-white">Recent Instances</h2>
+                        <Link href="/dashboard/instances" className="text-sm text-cyan-400 hover:text-cyan-300 flex items-center gap-1">
+                            View all <ArrowRight className="h-3 w-3" />
+                        </Link>
+                    </div>
+                    <Card className="glass border-slate-700/50">
+                        <CardContent className="p-4 space-y-3">
+                            {filteredInstances.slice(0, 4).map((instance) => (
+                                <Link
+                                    key={instance.id || instance.vmid}
+                                    href={`/dashboard/instances/${instance.vmid}`}
+                                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-700/30 transition-colors group"
+                                >
+                                    <div className={cn(
+                                        "p-2 rounded-lg",
+                                        instance.type === 'qemu' ? "bg-cyan-500/20" : "bg-violet-500/20"
+                                    )}>
+                                        {instance.type === 'qemu' ? (
+                                            <Server className="h-4 w-4 text-cyan-400" />
+                                        ) : (
+                                            <Box className="h-4 w-4 text-violet-400" />
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-medium text-white truncate group-hover:text-cyan-300 transition-colors">
+                                            {instance.name || `Instance-${instance.vmid}`}
+                                        </p>
+                                        <p className="text-xs text-slate-500">{instance.node}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className={cn(
+                                            "w-2 h-2 rounded-full",
+                                            instance.status === 'running' ? "bg-emerald-400" : "bg-slate-500"
+                                        )} />
+                                        <span className="text-xs text-slate-400 capitalize">{instance.status}</span>
+                                    </div>
+                                </Link>
+                            ))}
+                            {filteredInstances.length === 0 && (
+                                <div className="text-center py-8 text-slate-500">
+                                    <Server className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                    <p>No instances yet</p>
+                                    <Link href="/dashboard/instances/new" className="text-cyan-400 text-sm hover:underline">
+                                        Create your first instance
+                                    </Link>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* System Status */}
+                <div>
+                    <h2 className="text-xl font-semibold text-white mb-4">System Status</h2>
+                    <Card className="glass border-slate-700/50 h-[calc(100%-2rem)]">
+                        <CardContent className="p-6 space-y-4">
+                            <div className="flex items-center gap-4">
+                                <div className="relative">
+                                    <div className="absolute inset-0 bg-emerald-500/30 blur-xl rounded-full" />
+                                    <div className="relative p-3 bg-emerald-500/20 rounded-full">
+                                        <Zap className="h-6 w-6 text-emerald-400" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-white">All Systems Operational</h3>
+                                    <p className="text-sm text-slate-400">
+                                        Infrastructure running smoothly
+                                    </p>
                                 </div>
                             </div>
-                            <div>
-                                <h3 className="font-semibold text-white">All Systems Operational</h3>
-                                <p className="text-sm text-slate-400">
-                                    Your infrastructure is running smoothly
-                                </p>
+
+                            <div className="border-t border-slate-700/50 pt-4 space-y-3">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-400">Active Nodes</span>
+                                    <span className="text-white font-medium">{nodesCount} online</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-400">Running Instances</span>
+                                    <span className="text-emerald-400 font-medium">{runningCount} / {filteredInstances.length}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-400">VMs / Containers</span>
+                                    <span className="text-white font-medium">{vmCount} / {lxcCount}</span>
+                                </div>
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
+
+                            <Link
+                                href="/dashboard/monitoring"
+                                className="flex items-center justify-center gap-2 w-full py-2.5 mt-2 text-sm text-cyan-400 hover:text-cyan-300 border border-slate-700 hover:border-cyan-500/30 rounded-lg transition-all"
+                            >
+                                <Network className="h-4 w-4" />
+                                View Monitoring
+                            </Link>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </div>
     );
