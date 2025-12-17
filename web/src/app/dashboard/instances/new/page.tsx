@@ -238,7 +238,13 @@ export default function CreateInstancePage() {
         }
     });
 
+
     function onSubmit(values: FormValues) {
+        // Only allow submission on the last step
+        if (currentStep !== steps.length - 1) {
+            console.log('Submission blocked: not on last step');
+            return;
+        }
         createMutation.mutate(values);
     }
 

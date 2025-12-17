@@ -592,7 +592,7 @@ export default function MonitoringPage() {
             {viewMode === 'personal' && hasMetrics && (
                 <div className="grid gap-4 md:grid-cols-2">
                     <MultiNodeChart
-                        title="CPU - Mes instances"
+                        title="CPU"
                         allMetrics={instanceMetrics}
                         nodeNames={instanceNames}
                         dataKey="cpu"
@@ -600,7 +600,7 @@ export default function MonitoringPage() {
                         yAxisFormatter={(v) => `${(v * 100).toFixed(0)}%`}
                     />
                     <MultiNodeChart
-                        title="Mémoire - Mes instances"
+                        title="Mémoire"
                         allMetrics={instanceMetrics}
                         nodeNames={instanceNames}
                         dataKey="memused"
