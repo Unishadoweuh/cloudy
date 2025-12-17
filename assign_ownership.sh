@@ -2,7 +2,6 @@
 # Script to add ownership tags to existing VMs/CTs in Proxmox
 # This assigns all existing instances to a specific user
 
-
 # Configuration
 PROXMOX_URL="https://145.239.11.171:8006"
 PROXMOX_TOKEN="root@pam!cloud_proxmox=455a6254-a0f7-4e8a-9f88-c745d6b9bd67"
