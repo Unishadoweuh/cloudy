@@ -108,6 +108,11 @@ export default function DashboardLayout({
             href: "/dashboard/users",
             icon: Users,
         },
+        {
+            name: 'Admin Crédits',
+            href: "/dashboard/admin/billing",
+            icon: Shield,
+        },
     ];
 
     return (
