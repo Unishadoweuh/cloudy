@@ -2,4 +2,4 @@
 
 deploy.sh
 assign_ownership.sh
-
+*.sql

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { VncConsole } from '@/components/VncConsole';
 import {
     Play,
     Square,
@@ -26,6 +27,7 @@ import {
     CheckCircle,
     Zap,
     Globe,
+    ExternalLink,
 } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
@@ -199,7 +201,9 @@ export default function InstanceDetailsPage() {
     const id = params.id as string;
 
     const [vncUrl, setVncUrl] = useState<string | null>(null);
+    const [wsUrl, setWsUrl] = useState<string | null>(null);
     const [vncError, setVncError] = useState<string | null>(null);
+    const [showEmbeddedConsole, setShowEmbeddedConsole] = useState(false);
     const [actionSuccess, setActionSuccess] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
 
@@ -243,6 +247,7 @@ export default function InstanceDetailsPage() {
         try {
             const res = await getVnc(id, instance.node, instance.type);
             setVncUrl(res.vncUrl);
+            setWsUrl(res.wsUrl || null);
         } catch (e) {
             const msg = e instanceof Error ? e.message : 'Failed to load console';
             setVncError(msg);
@@ -451,67 +456,114 @@ export default function InstanceDetailsPage() {
 
                 {/* Console Tab */}
                 <TabsContent value="console" className="mt-6">
-                    <Card className="glass border-white/10 min-h-[400px] flex flex-col">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Terminal className="h-5 w-5 text-primary" />
-                                {instance.type === 'qemu' ? 'NoVNC Console' : 'Terminal'}
-                            </CardTitle>
-                            <CardDescription>
-                                {instance.type === 'qemu'
-                                    ? 'Graphical console access via VNC'
-                                    : 'Terminal access to the container'}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex-1 flex flex-col items-center justify-center py-12">
-                            <div className="text-center max-w-md">
-                                <div className="p-6 bg-primary/10 rounded-full mb-6 inline-block">
-                                    <Terminal className="h-16 w-16 text-primary" />
-                                </div>
-                                <h3 className="text-xl font-semibold mb-3">Console Access</h3>
-                                <p className="text-muted-foreground mb-6">
-                                    La console s&apos;ouvre dans un nouvel onglet via l&apos;interface Proxmox.
-                                    Assurez-vous d&apos;avoir accepté le certificat SSL.
-                                </p>
-                                {vncUrl ? (
-                                    <Button
-                                        onClick={() => window.open(vncUrl, '_blank')}
-                                        className="bg-primary hover:bg-primary/90 gap-2"
-                                        size="lg"
-                                    >
-                                        <Terminal className="h-5 w-5" />
-                                        Ouvrir la Console
-                                    </Button>
-                                ) : vncError ? (
-                                    <div className="space-y-4">
-                                        <p className="text-destructive text-sm">{vncError}</p>
-                                        <Button
-                                            onClick={fetchConsole}
-                                            variant="outline"
-                                        >
-                                            Réessayer
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                        <Loader2 className="h-5 w-5 animate-spin" />
-                                        Chargement...
-                                    </div>
-                                )}
-
-                                <div className="mt-8 p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl text-orange-300 text-sm text-left">
-                                    <strong>Note:</strong> Si la console ne s&apos;ouvre pas, vous devez peut-être{' '}
-                                    <a
-                                        href={vncUrl?.split('?')[0] || '#'}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="underline hover:text-orange-200"
-                                    >
-                                        accepter le certificat Proxmox
-                                    </a>
-                                    {' '}d&apos;abord.
-                                </div>
+                    <Card className="glass border-white/10 min-h-[500px] flex flex-col">
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Terminal className="h-5 w-5 text-primary" />
+                                    {instance.type === 'qemu' ? 'Console VNC' : 'Terminal'}
+                                </CardTitle>
+                                <CardDescription>
+                                    {instance.type === 'qemu'
+                                        ? 'Accès graphique via VNC'
+                                        : 'Accès terminal au conteneur'}
+                                </CardDescription>
                             </div>
+                            <div className="flex items-center gap-2">
+                                {wsUrl && showEmbeddedConsole && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => window.open(vncUrl || '', '_blank')}
+                                        className="gap-2"
+                                    >
+                                        <ExternalLink className="h-4 w-4" />
+                                        Nouvelle fenêtre
+                                    </Button>
+                                )}
+                                {vncUrl && !showEmbeddedConsole && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setShowEmbeddedConsole(true)}
+                                        className="gap-2"
+                                    >
+                                        <Terminal className="h-4 w-4" />
+                                        Console intégrée
+                                    </Button>
+                                )}
+                            </div>
+                        </CardHeader>
+                        <CardContent className="flex-1 flex flex-col">
+                            {/* Embedded VNC Console */}
+                            {showEmbeddedConsole && wsUrl ? (
+                                <VncConsole
+                                    wsUrl={wsUrl}
+                                    className="flex-1 min-h-[450px]"
+                                    onError={(err) => {
+                                        setVncError(err);
+                                        setShowEmbeddedConsole(false);
+                                    }}
+                                />
+                            ) : (
+                                /* Fallback / Initial View */
+                                <div className="flex-1 flex flex-col items-center justify-center py-8">
+                                    <div className="text-center max-w-md">
+                                        <div className="p-6 bg-primary/10 rounded-full mb-6 inline-block">
+                                            <Terminal className="h-16 w-16 text-primary" />
+                                        </div>
+                                        <h3 className="text-xl font-semibold mb-3">Console Access</h3>
+
+                                        {vncError ? (
+                                            <div className="space-y-4">
+                                                <p className="text-destructive text-sm">{vncError}</p>
+                                                <Button onClick={fetchConsole} variant="outline">
+                                                    Réessayer
+                                                </Button>
+                                            </div>
+                                        ) : vncUrl ? (
+                                            <div className="space-y-4">
+                                                <p className="text-muted-foreground mb-4">
+                                                    Choisissez comment accéder à la console de votre instance.
+                                                </p>
+                                                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                                                    {wsUrl && (
+                                                        <Button
+                                                            onClick={() => setShowEmbeddedConsole(true)}
+                                                            className="bg-primary hover:bg-primary/90 gap-2"
+                                                            size="lg"
+                                                        >
+                                                            <Terminal className="h-5 w-5" />
+                                                            Console intégrée
+                                                        </Button>
+                                                    )}
+                                                    <Button
+                                                        onClick={() => window.open(vncUrl, '_blank')}
+                                                        variant="outline"
+                                                        size="lg"
+                                                        className="gap-2"
+                                                    >
+                                                        <ExternalLink className="h-5 w-5" />
+                                                        Ouvrir dans Proxmox
+                                                    </Button>
+                                                </div>
+
+                                                {!wsUrl && (
+                                                    <div className="mt-6 p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl text-orange-300 text-sm text-left">
+                                                        <strong>Note:</strong> La console intégrée n&apos;est pas disponible.
+                                                        Utilisez le bouton ci-dessus pour ouvrir la console Proxmox.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2 text-muted-foreground justify-center">
+                                                <Loader2 className="h-5 w-5 animate-spin" />
+                                                Chargement de la console...
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>
