@@ -577,3 +577,91 @@ export async function deleteBackupJob(id: string): Promise<void> {
         return handleApiError(error);
     }
 }
+
+// ==================== SNAPSHOT API ====================
+
+export interface Snapshot {
+    name: string;
+    description?: string;
+    snaptime?: number;
+    vmstate?: boolean;
+    parent?: string;
+}
+
+/**
+ * Get snapshots for an instance
+ */
+export async function getInstanceSnapshots(
+    vmid: number,
+    node: string,
+    type: 'qemu' | 'lxc' = 'qemu'
+): Promise<Snapshot[]> {
+    try {
+        const response = await api.get<Snapshot[]>(`/compute/instances/${vmid}/snapshots`, {
+            params: { node, type }
+        });
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Create a snapshot
+ */
+export async function createSnapshot(
+    vmid: number,
+    node: string,
+    snapname: string,
+    type: 'qemu' | 'lxc' = 'qemu',
+    description?: string,
+    vmstate?: boolean
+): Promise<string> {
+    try {
+        const response = await api.post(`/compute/instances/${vmid}/snapshots`,
+            { snapname, description, vmstate },
+            { params: { node, type } }
+        );
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Delete a snapshot
+ */
+export async function deleteSnapshot(
+    vmid: number,
+    node: string,
+    snapname: string,
+    type: 'qemu' | 'lxc' = 'qemu'
+): Promise<{ success: boolean; task: string }> {
+    try {
+        const response = await api.delete(`/compute/instances/${vmid}/snapshots/${snapname}`, {
+            params: { node, type }
+        });
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Rollback to a snapshot
+ */
+export async function rollbackSnapshot(
+    vmid: number,
+    node: string,
+    snapname: string,
+    type: 'qemu' | 'lxc' = 'qemu'
+): Promise<{ success: boolean; task: string }> {
+    try {
+        const response = await api.post(`/compute/instances/${vmid}/snapshots/${snapname}/rollback`, {}, {
+            params: { node, type }
+        });
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}

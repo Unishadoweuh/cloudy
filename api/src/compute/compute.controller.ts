@@ -138,5 +138,90 @@ export class ComputeController {
 
         return { success: true, task: result };
     }
+
+    // ==================== SNAPSHOT ENDPOINTS ====================
+
+    @Get('instances/:id/snapshots')
+    async getSnapshots(
+        @Param('id') id: string,
+        @Query('node') node: string,
+        @Query('type') type?: 'qemu' | 'lxc'
+    ) {
+        const vmid = parseInt(id.replace(/\D/g, ''), 10);
+        const instanceType = type || (id.startsWith('lxc') ? 'lxc' : 'qemu');
+        return this.proxmoxService.getSnapshots(node, vmid, instanceType);
+    }
+
+    @Post('instances/:id/snapshots')
+    async createSnapshot(
+        @Param('id') id: string,
+        @Body() body: { snapname: string; description?: string; vmstate?: boolean },
+        @Query('node') node: string,
+        @Request() req: any,
+        @Query('type') type?: 'qemu' | 'lxc'
+    ) {
+        const vmid = parseInt(id.replace(/\D/g, ''), 10);
+        const instanceType = type || (id.startsWith('lxc') ? 'lxc' : 'qemu');
+
+        const result = await this.proxmoxService.createSnapshot(
+            node, vmid, instanceType,
+            body.snapname, body.description, body.vmstate || false
+        );
+
+        await this.notificationsService.create(
+            req.user.id,
+            'Snapshot Created',
+            `Created snapshot "${body.snapname}" for ${instanceType} ${vmid}`,
+            'success'
+        );
+
+        return result;
+    }
+
+    @Delete('instances/:id/snapshots/:snapname')
+    async deleteSnapshot(
+        @Param('id') id: string,
+        @Param('snapname') snapname: string,
+        @Query('node') node: string,
+        @Request() req: any,
+        @Query('type') type?: 'qemu' | 'lxc'
+    ) {
+        const vmid = parseInt(id.replace(/\D/g, ''), 10);
+        const instanceType = type || (id.startsWith('lxc') ? 'lxc' : 'qemu');
+
+        const result = await this.proxmoxService.deleteSnapshot(node, vmid, instanceType, snapname);
+
+        await this.notificationsService.create(
+            req.user.id,
+            'Snapshot Deleted',
+            `Deleted snapshot "${snapname}" from ${instanceType} ${vmid}`,
+            'warning'
+        );
+
+        return { success: true, task: result };
+    }
+
+    @Post('instances/:id/snapshots/:snapname/rollback')
+    async rollbackSnapshot(
+        @Param('id') id: string,
+        @Param('snapname') snapname: string,
+        @Query('node') node: string,
+        @Request() req: any,
+        @Query('type') type?: 'qemu' | 'lxc'
+    ) {
+        const vmid = parseInt(id.replace(/\D/g, ''), 10);
+        const instanceType = type || (id.startsWith('lxc') ? 'lxc' : 'qemu');
+
+        const result = await this.proxmoxService.rollbackSnapshot(node, vmid, instanceType, snapname);
+
+        await this.notificationsService.create(
+            req.user.id,
+            'Snapshot Rollback',
+            `Rolled back ${instanceType} ${vmid} to snapshot "${snapname}"`,
+            'info'
+        );
+
+        return { success: true, task: result };
+    }
 }
 

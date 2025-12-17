@@ -757,5 +757,64 @@ export class ProxmoxService {
 
         return resourcesWithIp;
     }
-}
 
+    // ==================== SNAPSHOT METHODS ====================
+
+    async getSnapshots(node: string, vmid: number, type: 'qemu' | 'lxc' = 'qemu') {
+        try {
+            const endpoint = type === 'lxc'
+                ? `/api2/json/nodes/${node}/lxc/${vmid}/snapshot`
+                : `/api2/json/nodes/${node}/qemu/${vmid}/snapshot`;
+            const res = await this.client.get(endpoint);
+            // Filter out 'current' which is not a real snapshot
+            return (res.data.data || []).filter((s: any) => s.name !== 'current');
+        } catch (error) {
+            this.logger.warn(`Failed to fetch snapshots for ${type}/${vmid}: ${error.message}`);
+            return [];
+        }
+    }
+
+    async createSnapshot(node: string, vmid: number, type: 'qemu' | 'lxc' = 'qemu', snapname: string, description?: string, vmstate: boolean = false) {
+        try {
+            const endpoint = type === 'lxc'
+                ? `/api2/json/nodes/${node}/lxc/${vmid}/snapshot`
+                : `/api2/json/nodes/${node}/qemu/${vmid}/snapshot`;
+
+            const payload: any = { snapname };
+            if (description) payload.description = description;
+            if (type === 'qemu' && vmstate) payload.vmstate = 1;
+
+            const res = await this.client.post(endpoint, payload);
+            return res.data.data;
+        } catch (error) {
+            this.logger.error(`Failed to create snapshot for ${type}/${vmid}: ${error.message}`);
+            throw error;
+        }
+    }
+
+    async deleteSnapshot(node: string, vmid: number, type: 'qemu' | 'lxc' = 'qemu', snapname: string) {
+        try {
+            const endpoint = type === 'lxc'
+                ? `/api2/json/nodes/${node}/lxc/${vmid}/snapshot/${snapname}`
+                : `/api2/json/nodes/${node}/qemu/${vmid}/snapshot/${snapname}`;
+            const res = await this.client.delete(endpoint);
+            return res.data.data;
+        } catch (error) {
+            this.logger.error(`Failed to delete snapshot ${snapname}: ${error.message}`);
+            throw error;
+        }
+    }
+
+    async rollbackSnapshot(node: string, vmid: number, type: 'qemu' | 'lxc' = 'qemu', snapname: string) {
+        try {
+            const endpoint = type === 'lxc'
+                ? `/api2/json/nodes/${node}/lxc/${vmid}/snapshot/${snapname}/rollback`
+                : `/api2/json/nodes/${node}/qemu/${vmid}/snapshot/${snapname}/rollback`;
+            const res = await this.client.post(endpoint);
+            return res.data.data;
+        } catch (error) {
+            this.logger.error(`Failed to rollback to snapshot ${snapname}: ${error.message}`);
+            throw error;
+        }
+    }
+}
