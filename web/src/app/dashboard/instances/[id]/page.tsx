@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 function formatBytes(bytes: number): string {
     if (bytes === 0) return '0 B';
@@ -261,14 +262,14 @@ export default function InstanceDetailsPage() {
             return vmAction(id, instance.node, action, instance.type);
         },
         onSuccess: (_, { action }) => {
-            setActionError(null);
-            setActionSuccess(`${action.charAt(0).toUpperCase() + action.slice(1)} command sent!`);
-            setTimeout(() => setActionSuccess(null), 3000);
+            toast.success(
+                `${action.charAt(0).toUpperCase() + action.slice(1)} command sent`,
+                `Action performed on ${instance?.name || 'instance'}`
+            );
             queryClient.invalidateQueries({ queryKey: ['instances'] });
         },
         onError: (err: Error) => {
-            setActionError(err.message);
-            setTimeout(() => setActionError(null), 5000);
+            toast.error('Action failed', err.message);
         },
     });
 
