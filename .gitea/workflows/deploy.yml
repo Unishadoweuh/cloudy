@@ -22,7 +22,9 @@ jobs:
     runs-on: linux
     steps:
       - name: Checkout code
-        uses: https://gitea.com/actions/checkout@v4
+        run: |
+          git clone --depth 1 --branch ${{ github.ref_name }} ${{ github.server_url }}/${{ github.repository }}.git .
+          git checkout ${{ github.sha }}
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
