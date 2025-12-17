@@ -26,65 +26,68 @@ jobs:
           SERVER_HOST=$(echo "${{ github.server_url }}" | sed 's|https://||' | sed 's|http://||')
           git clone --depth 1 --branch ${{ github.ref_name }} http://oauth2:${{ secrets.GITHUB_TOKEN }}@${SERVER_HOST}/${{ github.repository }}.git .
 
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.DEPLOY_SSH_PORT }} ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_SSH_PORT }}
-          script: |
-            set -e
-            echo "🚀 Starting deployment..."
-            
-            # Navigate to project directory
-            cd ${{ vars.DEPLOY_PATH }}
-            
-            # Pull latest code
-            echo "⬇️ Pulling latest code..."
-            git pull origin main
-            
-            # Backup database
-            echo "📦 Creating database backup..."
-            docker compose -f docker-compose.prod.yml exec -T db pg_dump -U ${{ secrets.POSTGRES_USER }} ${{ secrets.POSTGRES_DB }} > backup_$(date +%Y%m%d_%H%M%S).sql 2>/dev/null || echo "No existing DB to backup"
-            
-            # Build and restart services
-            echo "🔨 Building and restarting services..."
-            docker compose -f docker-compose.prod.yml up -d --build --force-recreate
-            
-            # Wait for services to start
-            echo "⏳ Waiting for services..."
-            sleep 20
-            
-            # Run database migrations
-            echo "🔄 Running migrations..."
-            docker compose -f docker-compose.prod.yml exec -T api npx prisma migrate deploy || echo "Migration skipped"
-            
-            # Health checks
-            echo "🏥 Running health checks..."
-            
-            if curl -sf http://localhost:${{ vars.API_PORT }}/health > /dev/null 2>&1 || curl -sf http://localhost:${{ vars.API_PORT }}/ > /dev/null 2>&1; then
-              echo "✅ API is healthy"
-            else
-              echo "⚠️ API check inconclusive, checking logs..."
-              docker compose -f docker-compose.prod.yml logs --tail=20 api
-            fi
-            
-            if curl -sf http://localhost:${{ vars.WEB_PORT }}/ > /dev/null 2>&1; then
-              echo "✅ Web is healthy"
-            else
-              echo "⚠️ Web check inconclusive, checking logs..."
-              docker compose -f docker-compose.prod.yml logs --tail=20 web
-            fi
-            
-            # Cleanup
-            echo "🧹 Cleaning up old images..."
-            docker image prune -f
-            
-            # Keep only last 5 backups
-            ls -t backup_*.sql 2>/dev/null | tail -n +6 | xargs -r rm
-            
-            echo "✅ Deployment complete!"
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.DEPLOY_SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'DEPLOY_SCRIPT'
+          set -e
+          echo "🚀 Starting deployment..."
+          
+          # Navigate to project directory
+          cd ${{ vars.DEPLOY_PATH }}
+          
+          # Pull latest code
+          echo "⬇️ Pulling latest code..."
+          git pull origin main
+          
+          # Backup database
+          echo "📦 Creating database backup..."
+          docker compose -f docker-compose.prod.yml exec -T db pg_dump -U ${{ secrets.POSTGRES_USER }} ${{ secrets.POSTGRES_DB }} > backup_$(date +%Y%m%d_%H%M%S).sql 2>/dev/null || echo "No existing DB to backup"
+          
+          # Build and restart services
+          echo "🔨 Building and restarting services..."
+          docker compose -f docker-compose.prod.yml up -d --build --force-recreate
+          
+          # Wait for services to start
+          echo "⏳ Waiting for services..."
+          sleep 20
+          
+          # Run database migrations
+          echo "🔄 Running migrations..."
+          docker compose -f docker-compose.prod.yml exec -T api npx prisma migrate deploy || echo "Migration skipped"
+          
+          # Health checks
+          echo "🏥 Running health checks..."
+          
+          if curl -sf http://localhost:${{ vars.API_PORT }}/health > /dev/null 2>&1 || curl -sf http://localhost:${{ vars.API_PORT }}/ > /dev/null 2>&1; then
+            echo "✅ API is healthy"
+          else
+            echo "⚠️ API check inconclusive, checking logs..."
+            docker compose -f docker-compose.prod.yml logs --tail=20 api
+          fi
+          
+          if curl -sf http://localhost:${{ vars.WEB_PORT }}/ > /dev/null 2>&1; then
+            echo "✅ Web is healthy"
+          else
+            echo "⚠️ Web check inconclusive, checking logs..."
+            docker compose -f docker-compose.prod.yml logs --tail=20 web
+          fi
+          
+          # Cleanup
+          echo "🧹 Cleaning up old images..."
+          docker image prune -f
+          
+          # Keep only last 5 backups
+          ls -t backup_*.sql 2>/dev/null | tail -n +6 | xargs -r rm
+          
+          echo "✅ Deployment complete!"
+          DEPLOY_SCRIPT
 
       - name: Notify Discord - Success
         if: success() && vars.DISCORD_WEBHOOK_URL != ''
