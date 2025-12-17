@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/language-context";
+import { getInstances, getMe } from "@/lib/api";
+import type { Instance } from "@/lib/types";
 import {
     Server,
     HardDrive,
@@ -29,12 +32,25 @@ export default function DashboardLayout({
     const pathname = usePathname();
     const { t } = useLanguage();
 
+    // Fetch instances to show count badges
+    const { data: instances } = useQuery({
+        queryKey: ['instances-sidebar'],
+        queryFn: () => getInstances(),
+        refetchInterval: 30000,
+        staleTime: 10000,
+    });
+
+    const instanceCount = instances?.filter((i: Instance) => !i.template)?.length || 0;
+    const runningCount = instances?.filter((i: Instance) => !i.template && i.status === 'running')?.length || 0;
+
     type NavigationItem = {
         name: string;
         href: string;
         icon: any;
         exact?: boolean;
         disabled?: boolean;
+        badge?: number | string;
+        badgeColor?: string;
     };
 
     const navigation: NavigationItem[] = [
@@ -48,6 +64,8 @@ export default function DashboardLayout({
             name: t('nav.instances'),
             href: "/dashboard/instances",
             icon: Server,
+            badge: instanceCount > 0 ? `${runningCount}/${instanceCount}` : undefined,
+            badgeColor: runningCount > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-400',
         },
         {
             name: t('nav.volumes'),
@@ -127,11 +145,19 @@ export default function DashboardLayout({
                                 >
                                     <Icon className={cn("h-5 w-5", isActive && "text-cyan-400")} />
                                     <span className="font-medium">{item.name}</span>
-                                    {item.disabled ? (
+                                    {item.badge && (
+                                        <span className={cn(
+                                            "ml-auto text-[10px] px-1.5 py-0.5 rounded font-medium",
+                                            item.badgeColor || "bg-slate-700 text-slate-400"
+                                        )}>
+                                            {item.badge}
+                                        </span>
+                                    )}
+                                    {item.disabled && !item.badge && (
                                         <span className="ml-auto text-[10px] bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded">
                                             Soon
                                         </span>
-                                    ) : null}
+                                    )}
                                 </Link>
                             );
                         })}
