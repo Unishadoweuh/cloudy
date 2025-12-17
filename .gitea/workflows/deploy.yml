@@ -23,9 +23,8 @@ jobs:
     steps:
       - name: Checkout code
         run: |
-          git clone --depth 1 --branch ${{ github.ref_name }} https://oauth2:${{ secrets.GITHUB_TOKEN }}@${GITHUB_SERVER_URL#https://}/${{ github.repository }}.git .
-        env:
-          GITHUB_SERVER_URL: ${{ github.server_url }}
+          SERVER_HOST=$(echo "${{ github.server_url }}" | sed 's|https://||' | sed 's|http://||')
+          git clone --depth 1 --branch ${{ github.ref_name }} http://oauth2:${{ secrets.GITHUB_TOKEN }}@${SERVER_HOST}/${{ github.repository }}.git .
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
