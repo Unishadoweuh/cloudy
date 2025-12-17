@@ -35,6 +35,8 @@ import {
     Square,
     Trash2,
     Globe,
+    Copy,
+    Check,
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -50,6 +52,31 @@ function formatBytes(bytes: number): string {
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function CopyButton({ text }: { text: string }) {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <button
+            onClick={handleCopy}
+            className="p-1 rounded hover:bg-slate-700/50 transition-colors"
+            title="Copier l'adresse IP"
+        >
+            {copied ? (
+                <Check className="h-3 w-3 text-emerald-400" />
+            ) : (
+                <Copy className="h-3 w-3 text-slate-500 hover:text-cyan-400" />
+            )}
+        </button>
+    );
 }
 
 function StatsCard({
@@ -144,6 +171,7 @@ function InstanceCard({ instance }: { instance: Instance }) {
                         <div className="flex items-center gap-1 text-cyan-400 ml-auto">
                             <Globe className="h-3.5 w-3.5" />
                             <span className="font-mono">{instance.ip}</span>
+                            <CopyButton text={instance.ip} />
                         </div>
                     )}
                 </div>
@@ -219,6 +247,7 @@ function InstanceTableRow({ instance, index, onAction, onDelete }: { instance: I
                     <div className="flex items-center gap-1 text-sm text-cyan-400 font-mono">
                         <Globe className="h-3.5 w-3.5" />
                         <span>{instance.ip}</span>
+                        <CopyButton text={instance.ip} />
                     </div>
                 ) : (
                     <span className="text-sm text-slate-600">-</span>
