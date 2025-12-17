@@ -2,13 +2,25 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
-import { getInstances, vmAction, getVnc } from '@/lib/api';
-import type { Instance, VmAction } from '@/lib/types';
+import { getInstances, vmAction, getVnc, getInstanceMetrics } from '@/lib/api';
+import type { Instance, VmAction, RrdDataPoint } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { VncConsole } from '@/components/VncConsole';
+import {
+    LineChart,
+    Line,
+    AreaChart,
+    Area,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+} from 'recharts';
 import {
     Play,
     Square,
@@ -28,6 +40,7 @@ import {
     Zap,
     Globe,
     ExternalLink,
+    RefreshCw,
 } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
@@ -206,6 +219,7 @@ export default function InstanceDetailsPage() {
     const [showEmbeddedConsole, setShowEmbeddedConsole] = useState(false);
     const [actionSuccess, setActionSuccess] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
+    const [metricsTimeframe, setMetricsTimeframe] = useState<'hour' | 'day' | 'week' | 'month'>('hour');
 
     const {
         data: instances,
@@ -221,6 +235,23 @@ export default function InstanceDetailsPage() {
     const instance = instances?.find(
         (i: Instance) => i.vmid?.toString() === id || i.id?.endsWith(id)
     );
+
+    // Fetch instance metrics for monitoring tab
+    const {
+        data: metrics,
+        isLoading: metricsLoading,
+        refetch: refetchMetrics
+    } = useQuery({
+        queryKey: ['instance-metrics', id, instance?.node, instance?.type, metricsTimeframe],
+        queryFn: () => getInstanceMetrics(
+            parseInt(id),
+            instance?.node || '',
+            instance?.type as 'qemu' | 'lxc' || 'qemu',
+            metricsTimeframe
+        ),
+        enabled: !!instance,
+        refetchInterval: 60000,
+    });
 
     const queryClient = useQueryClient();
 
@@ -569,33 +600,208 @@ export default function InstanceDetailsPage() {
                 </TabsContent>
 
                 {/* Monitoring Tab */}
-                <TabsContent value="monitoring" className="mt-6">
-                    <Card className="glass border-white/10 min-h-[400px]">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Activity className="h-5 w-5 text-primary" />
-                                Resource Monitoring
-                            </CardTitle>
-                            <CardDescription>
-                                CPU, Memory, and Network usage over time
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex flex-col items-center justify-center py-16">
-                            <div className="relative mb-6">
-                                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-purple-500/20 blur-2xl rounded-full" />
-                                <div className="relative p-8 bg-gradient-to-br from-primary/10 to-purple-500/10 rounded-full">
-                                    <Activity className="h-16 w-16 text-primary/50" />
-                                </div>
-                            </div>
-                            <h3 className="text-xl font-semibold gradient-text mb-2">
-                                Coming Soon
-                            </h3>
-                            <p className="text-sm text-muted-foreground text-center max-w-md">
-                                Real-time monitoring with CPU, Memory, and Network charts will be available
-                                in a future update with beautiful Recharts visualizations.
-                            </p>
-                        </CardContent>
-                    </Card>
+                <TabsContent value="monitoring" className="mt-6 space-y-6">
+                    {/* Controls */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Select value={metricsTimeframe} onValueChange={(v) => setMetricsTimeframe(v as typeof metricsTimeframe)}>
+                                <SelectTrigger className="w-32 bg-slate-800/50 border-slate-700">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-slate-800 border-slate-700">
+                                    <SelectItem value="hour">1 heure</SelectItem>
+                                    <SelectItem value="day">24 heures</SelectItem>
+                                    <SelectItem value="week">7 jours</SelectItem>
+                                    <SelectItem value="month">30 jours</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => refetchMetrics()}
+                            disabled={metricsLoading}
+                            className="gap-2"
+                        >
+                            <RefreshCw className={cn("h-4 w-4", metricsLoading && "animate-spin")} />
+                            Rafraîchir
+                        </Button>
+                    </div>
+
+                    {metricsLoading ? (
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {[...Array(4)].map((_, i) => (
+                                <div key={i} className="h-[300px] bg-slate-800/30 rounded-xl animate-pulse" />
+                            ))}
+                        </div>
+                    ) : !metrics || metrics.length === 0 ? (
+                        <Card className="glass border-white/10">
+                            <CardContent className="flex flex-col items-center justify-center py-16">
+                                <Activity className="h-12 w-12 text-slate-500 mb-4" />
+                                <p className="text-slate-400">Aucune donnée de monitoring disponible</p>
+                                <p className="text-sm text-slate-500 mt-1">L&apos;instance doit être en cours d&apos;exécution.</p>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {/* CPU Chart */}
+                            <Card className="glass border-white/10">
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                        <Cpu className="h-4 w-4 text-cyan-400" />
+                                        Utilisation CPU
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="h-[220px]">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={metrics}>
+                                                <defs>
+                                                    <linearGradient id="cpuGradient" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor="#22d3ee" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                                <XAxis
+                                                    dataKey="time"
+                                                    stroke="#64748b"
+                                                    tick={{ fill: '#64748b', fontSize: 10 }}
+                                                    tickFormatter={(v) => new Date(v * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                                />
+                                                <YAxis
+                                                    stroke="#64748b"
+                                                    tick={{ fill: '#64748b', fontSize: 10 }}
+                                                    tickFormatter={(v) => `${(v * 100).toFixed(0)}%`}
+                                                    domain={[0, 1]}
+                                                />
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                                                    labelFormatter={(v) => new Date(v * 1000).toLocaleString('fr-FR')}
+                                                    formatter={(v: number) => [`${(v * 100).toFixed(1)}%`, 'CPU']}
+                                                />
+                                                <Area type="monotone" dataKey="cpu" stroke="#22d3ee" fill="url(#cpuGradient)" strokeWidth={2} />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Memory Chart */}
+                            <Card className="glass border-white/10">
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                        <MemoryStick className="h-4 w-4 text-violet-400" />
+                                        Utilisation Mémoire
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="h-[220px]">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={metrics}>
+                                                <defs>
+                                                    <linearGradient id="memGradient" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor="#a78bfa" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                                <XAxis
+                                                    dataKey="time"
+                                                    stroke="#64748b"
+                                                    tick={{ fill: '#64748b', fontSize: 10 }}
+                                                    tickFormatter={(v) => new Date(v * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                                />
+                                                <YAxis
+                                                    stroke="#64748b"
+                                                    tick={{ fill: '#64748b', fontSize: 10 }}
+                                                    tickFormatter={(v) => formatBytes(v)}
+                                                />
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                                                    labelFormatter={(v) => new Date(v * 1000).toLocaleString('fr-FR')}
+                                                    formatter={(v: number) => [formatBytes(v), 'Mémoire']}
+                                                />
+                                                <Area type="monotone" dataKey="mem" stroke="#a78bfa" fill="url(#memGradient)" strokeWidth={2} />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Network In Chart */}
+                            <Card className="glass border-white/10">
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                        <Activity className="h-4 w-4 text-emerald-400" />
+                                        Réseau (Entrant)
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="h-[220px]">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <LineChart data={metrics}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                                <XAxis
+                                                    dataKey="time"
+                                                    stroke="#64748b"
+                                                    tick={{ fill: '#64748b', fontSize: 10 }}
+                                                    tickFormatter={(v) => new Date(v * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                                />
+                                                <YAxis
+                                                    stroke="#64748b"
+                                                    tick={{ fill: '#64748b', fontSize: 10 }}
+                                                    tickFormatter={(v) => formatBytes(v)}
+                                                />
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                                                    labelFormatter={(v) => new Date(v * 1000).toLocaleString('fr-FR')}
+                                                    formatter={(v: number) => [formatBytes(v), 'Entrant']}
+                                                />
+                                                <Line type="monotone" dataKey="netin" stroke="#34d399" strokeWidth={2} dot={false} />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Network Out Chart */}
+                            <Card className="glass border-white/10">
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                        <Activity className="h-4 w-4 text-amber-400" />
+                                        Réseau (Sortant)
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="h-[220px]">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <LineChart data={metrics}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                                <XAxis
+                                                    dataKey="time"
+                                                    stroke="#64748b"
+                                                    tick={{ fill: '#64748b', fontSize: 10 }}
+                                                    tickFormatter={(v) => new Date(v * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                                />
+                                                <YAxis
+                                                    stroke="#64748b"
+                                                    tick={{ fill: '#64748b', fontSize: 10 }}
+                                                    tickFormatter={(v) => formatBytes(v)}
+                                                />
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                                                    labelFormatter={(v) => new Date(v * 1000).toLocaleString('fr-FR')}
+                                                    formatter={(v: number) => [formatBytes(v), 'Sortant']}
+                                                />
+                                                <Line type="monotone" dataKey="netout" stroke="#fbbf24" strokeWidth={2} dot={false} />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
                 </TabsContent>
             </Tabs>
         </div>
