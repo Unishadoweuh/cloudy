@@ -342,13 +342,60 @@ function InstanceTableRow({ instance, index, onAction, onDelete }: { instance: I
 function LoadingSkeleton() {
     return (
         <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-4">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                    <div className="h-7 w-32 bg-slate-700/30 rounded-lg animate-pulse" />
+                    <div className="h-4 w-64 bg-slate-700/30 rounded-lg animate-pulse" />
+                </div>
+                <div className="flex gap-2">
+                    <div className="h-10 w-10 bg-slate-700/30 rounded-lg animate-pulse" />
+                    <div className="h-10 w-36 bg-slate-700/30 rounded-lg animate-pulse" />
+                </div>
+            </div>
+
+            {/* Stats */}
+            <div className="grid gap-3 md:grid-cols-4">
                 {[...Array(4)].map((_, i) => (
-                    <div key={i} className="h-20 bg-slate-800/30 rounded-xl animate-pulse" />
+                    <div key={i} className="p-5 rounded-xl bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50">
+                        <div className="flex items-center gap-4">
+                            <div className="h-10 w-10 bg-slate-700/30 rounded-lg animate-pulse" />
+                            <div className="space-y-2">
+                                <div className="h-3 w-16 bg-slate-700/30 rounded animate-pulse" />
+                                <div className="h-6 w-10 bg-slate-700/30 rounded animate-pulse" />
+                            </div>
+                        </div>
+                    </div>
                 ))}
             </div>
-            <div className="h-12 bg-slate-800/30 rounded-lg animate-pulse" />
-            <div className="h-64 bg-slate-800/30 rounded-lg animate-pulse" />
+
+            {/* Filters */}
+            <div className="flex flex-col md:flex-row gap-3 p-4 bg-slate-800/30 border border-slate-700/30 rounded-lg">
+                <div className="h-10 flex-1 bg-slate-700/30 rounded-lg animate-pulse" />
+                <div className="flex gap-2">
+                    <div className="h-10 w-32 bg-slate-700/30 rounded-lg animate-pulse" />
+                    <div className="h-10 w-32 bg-slate-700/30 rounded-lg animate-pulse" />
+                    <div className="h-10 w-20 bg-slate-700/30 rounded-lg animate-pulse" />
+                </div>
+            </div>
+
+            {/* Table */}
+            <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl overflow-hidden">
+                <div className="space-y-0">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex items-center gap-4 p-4 border-b border-slate-700/30">
+                            <div className="h-10 w-10 bg-slate-700/30 rounded-lg animate-pulse" />
+                            <div className="flex-1 space-y-2">
+                                <div className="h-4 w-32 bg-slate-700/30 rounded animate-pulse" />
+                                <div className="h-3 w-20 bg-slate-700/30 rounded animate-pulse" />
+                            </div>
+                            <div className="h-5 w-16 bg-slate-700/30 rounded-full animate-pulse" />
+                            <div className="h-4 w-24 bg-slate-700/30 rounded animate-pulse" />
+                            <div className="h-8 w-8 bg-slate-700/30 rounded-lg animate-pulse" />
+                        </div>
+                    ))}
+                </div>
+            </div>
         </div>
     );
 }
