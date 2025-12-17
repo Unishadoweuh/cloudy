@@ -1,17 +1,19 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
     Zap,
     Server,
     Shield,
     BarChart3,
     Cloud,
-    Cpu,
     HardDrive,
-    Network,
     ArrowRight,
+    Cpu,
+    Network,
+    Database,
+    Lock,
+    Globe,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -23,45 +25,109 @@ function DiscordIcon(props: React.SVGProps<SVGSVGElement>) {
     );
 }
 
+// Floating tech icons with staggered animations
+function FloatingIcons() {
+    const icons = [
+        { Icon: Cpu, position: 'top-[15%] left-[10%]', delay: '0s', color: 'text-cyan-500/30' },
+        { Icon: Server, position: 'top-[25%] right-[15%]', delay: '0.5s', color: 'text-violet-500/30' },
+        { Icon: Database, position: 'bottom-[30%] left-[8%]', delay: '1s', color: 'text-emerald-500/30' },
+        { Icon: Network, position: 'top-[60%] right-[12%]', delay: '1.5s', color: 'text-orange-500/30' },
+        { Icon: Lock, position: 'bottom-[20%] right-[20%]', delay: '2s', color: 'text-pink-500/30' },
+        { Icon: Globe, position: 'top-[40%] left-[5%]', delay: '2.5s', color: 'text-blue-500/30' },
+    ];
+
+    return (
+        <>
+            {icons.map(({ Icon, position, delay, color }, i) => (
+                <div
+                    key={i}
+                    className={cn(
+                        'absolute pointer-events-none',
+                        position
+                    )}
+                    style={{
+                        animation: `float 6s ease-in-out infinite`,
+                        animationDelay: delay,
+                    }}
+                >
+                    <Icon className={cn('h-10 w-10 md:h-14 md:w-14', color)} />
+                </div>
+            ))}
+            <style jsx>{`
+                @keyframes float {
+                    0%, 100% { transform: translateY(0px) rotate(0deg); }
+                    50% { transform: translateY(-20px) rotate(5deg); }
+                }
+            `}</style>
+        </>
+    );
+}
+
 function FeatureCard({
     icon: Icon,
     title,
     description,
-    gradient
+    gradient,
+    delay
 }: {
     icon: React.ElementType;
     title: string;
     description: string;
     gradient: string;
+    delay: number;
 }) {
     return (
-        <div className="group relative p-6 rounded-2xl bg-slate-800/30 border border-slate-700/50 backdrop-blur-sm hover:bg-slate-800/50 transition-all duration-300 hover:scale-[1.02] hover:border-slate-600/50">
+        <div
+            className="group relative p-6 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 hover:bg-white/10 transition-all duration-500 hover:scale-[1.03] hover:border-white/20 hover:shadow-2xl hover:shadow-cyan-500/10"
+            style={{
+                animation: 'slideUp 0.6s ease-out forwards',
+                animationDelay: `${delay}ms`,
+                opacity: 0,
+            }}
+        >
+            {/* Glow effect on hover */}
             <div className={cn(
-                "absolute top-0 right-0 w-24 h-24 rounded-full blur-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500",
-                gradient
+                "absolute -inset-px rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl",
+                gradient === 'cyan' ? 'bg-cyan-500/20' :
+                    gradient === 'violet' ? 'bg-violet-500/20' :
+                        gradient === 'emerald' ? 'bg-emerald-500/20' :
+                            'bg-orange-500/20'
             )} />
-            <div className={cn(
-                "p-3 rounded-xl w-fit mb-4",
-                gradient.replace('bg-', 'bg-opacity-10 bg-')
-            )} style={{ backgroundColor: `${gradient.includes('cyan') ? 'rgba(34, 211, 238, 0.1)' : gradient.includes('violet') ? 'rgba(139, 92, 246, 0.1)' : gradient.includes('emerald') ? 'rgba(52, 211, 153, 0.1)' : 'rgba(251, 146, 60, 0.1)'}` }}>
-                <Icon className={cn(
-                    "h-6 w-6",
-                    gradient.includes('cyan') ? 'text-cyan-400' :
-                        gradient.includes('violet') ? 'text-violet-400' :
-                            gradient.includes('emerald') ? 'text-emerald-400' :
-                                'text-orange-400'
-                )} />
+
+            <div className="relative z-10">
+                <div className={cn(
+                    "p-3 rounded-xl w-fit mb-4 transition-transform duration-300 group-hover:scale-110",
+                    gradient === 'cyan' ? 'bg-cyan-500/20' :
+                        gradient === 'violet' ? 'bg-violet-500/20' :
+                            gradient === 'emerald' ? 'bg-emerald-500/20' :
+                                'bg-orange-500/20'
+                )}>
+                    <Icon className={cn(
+                        "h-6 w-6 transition-all duration-300 group-hover:scale-110",
+                        gradient === 'cyan' ? 'text-cyan-400' :
+                            gradient === 'violet' ? 'text-violet-400' :
+                                gradient === 'emerald' ? 'text-emerald-400' :
+                                    'text-orange-400'
+                    )} />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
+                <p className="text-sm text-slate-400 leading-relaxed">{description}</p>
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
-            <p className="text-sm text-slate-400 leading-relaxed">{description}</p>
         </div>
     );
 }
 
-function StatBadge({ value, label }: { value: string; label: string }) {
+function StatBadge({ value, label, delay }: { value: string; label: string; delay: number }) {
     return (
-        <div className="text-center">
-            <div className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">
+        <div
+            className="text-center"
+            style={{
+                animation: 'fadeIn 0.5s ease-out forwards',
+                animationDelay: `${delay}ms`,
+                opacity: 0,
+            }}
+        >
+            <div className="text-3xl font-bold bg-gradient-to-r from-cyan-400 via-violet-400 to-cyan-400 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient">
                 {value}
             </div>
             <div className="text-sm text-slate-500 mt-1">{label}</div>
@@ -77,24 +143,62 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen bg-slate-950 overflow-hidden">
+            {/* CSS Animations */}
+            <style jsx global>{`
+                @keyframes slideUp {
+                    from { opacity: 0; transform: translateY(30px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                @keyframes gradient {
+                    0% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0% 50%; }
+                }
+                .animate-gradient {
+                    animation: gradient 3s ease infinite;
+                }
+                @keyframes pulse-glow {
+                    0%, 100% { box-shadow: 0 0 20px rgba(56, 189, 248, 0.3); }
+                    50% { box-shadow: 0 0 40px rgba(56, 189, 248, 0.6); }
+                }
+            `}</style>
+
             {/* Background Effects */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
-                {/* Animated gradient orbs */}
-                <div className="absolute top-1/4 -left-32 w-96 h-96 bg-cyan-500/20 rounded-full blur-[128px] animate-pulse" />
-                <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-violet-500/20 rounded-full blur-[128px] animate-pulse" style={{ animationDelay: '1s' }} />
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-slate-800/50 rounded-full blur-[128px]" />
+                {/* Animated gradient orbs with blur */}
+                <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-cyan-500/20 rounded-full blur-[150px] animate-pulse" />
+                <div
+                    className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-violet-500/20 rounded-full blur-[150px] animate-pulse"
+                    style={{ animationDelay: '1s' }}
+                />
+                <div
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/10 rounded-full blur-[180px]"
+                />
 
                 {/* Grid pattern */}
                 <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.03)_1px,transparent_1px)] bg-[size:64px_64px]" />
+
+                {/* Radial gradient overlay */}
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(15,23,42,0.8)_70%)]" />
+
+                {/* Floating tech icons */}
+                <FloatingIcons />
             </div>
 
             {/* Main Content */}
             <div className="relative z-10 min-h-screen flex flex-col">
                 {/* Header */}
                 <header className="p-6 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-violet-500/20 rounded-xl border border-slate-700/50">
-                            <Cloud className="h-6 w-6 text-cyan-400" />
+                    <div
+                        className="flex items-center gap-3"
+                        style={{ animation: 'slideUp 0.5s ease-out forwards' }}
+                    >
+                        <div className="p-2.5 bg-gradient-to-br from-cyan-500/20 to-violet-500/20 rounded-xl border border-white/10 backdrop-blur-xl shadow-lg shadow-cyan-500/10">
+                            <Cloud className="h-7 w-7 text-cyan-400" />
                         </div>
                         <span className="text-xl font-bold text-white">Cloud Proxmox</span>
                     </div>
@@ -105,43 +209,56 @@ export default function LoginPage() {
                     <div className="max-w-6xl w-full grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
                         {/* Left - Content */}
                         <div className="space-y-8">
-                            <div className="space-y-4">
-                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800/50 border border-slate-700/50 text-sm text-slate-400">
+                            <div className="space-y-6">
+                                <div
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 text-sm text-slate-400"
+                                    style={{ animation: 'slideUp 0.4s ease-out forwards' }}
+                                >
                                     <Zap className="h-4 w-4 text-cyan-400" />
                                     Dashboard de gestion Proxmox
                                 </div>
-                                <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight">
+                                <h1
+                                    className="text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight"
+                                    style={{ animation: 'slideUp 0.5s ease-out forwards' }}
+                                >
                                     Gérez votre infrastructure
-                                    <span className="block bg-gradient-to-r from-cyan-400 via-violet-400 to-cyan-400 bg-clip-text text-transparent">
+                                    <span className="block bg-gradient-to-r from-cyan-400 via-violet-400 to-pink-400 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient">
                                         en toute simplicité
                                     </span>
                                 </h1>
-                                <p className="text-lg text-slate-400 max-w-lg leading-relaxed">
+                                <p
+                                    className="text-lg text-slate-400 max-w-lg leading-relaxed"
+                                    style={{ animation: 'slideUp 0.6s ease-out forwards' }}
+                                >
                                     Une interface moderne et intuitive pour administrer vos machines virtuelles,
                                     conteneurs et sauvegardes Proxmox VE depuis un seul endroit.
                                 </p>
                             </div>
 
                             {/* Login Button */}
-                            <div className="flex flex-col sm:flex-row gap-4">
+                            <div
+                                className="flex flex-col sm:flex-row gap-4"
+                                style={{ animation: 'slideUp 0.7s ease-out forwards' }}
+                            >
                                 <Button
                                     onClick={handleLogin}
                                     size="lg"
-                                    className="h-14 px-8 bg-[#5865F2] hover:bg-[#4752C4] text-white font-medium text-lg transition-all hover:scale-[1.02] shadow-lg shadow-[#5865F2]/25"
+                                    className="h-14 px-8 bg-gradient-to-r from-[#5865F2] to-[#7289DA] hover:from-[#4752C4] hover:to-[#5865F2] text-white font-medium text-lg transition-all duration-300 hover:scale-[1.03] shadow-2xl shadow-[#5865F2]/30 border border-white/10"
+                                    style={{ animation: 'pulse-glow 3s ease-in-out infinite' }}
                                 >
                                     <DiscordIcon className="mr-3 h-6 w-6" />
                                     Se connecter avec Discord
-                                    <ArrowRight className="ml-3 h-5 w-5" />
+                                    <ArrowRight className="ml-3 h-5 w-5 transition-transform group-hover:translate-x-1" />
                                 </Button>
                             </div>
 
                             {/* Stats */}
                             <div className="flex items-center gap-8 pt-4">
-                                <StatBadge value="99.9%" label="Uptime" />
-                                <div className="w-px h-12 bg-slate-700" />
-                                <StatBadge value="<50ms" label="Latence API" />
-                                <div className="w-px h-12 bg-slate-700" />
-                                <StatBadge value="∞" label="VMs" />
+                                <StatBadge value="99.9%" label="Uptime" delay={800} />
+                                <div className="w-px h-12 bg-gradient-to-b from-transparent via-slate-700 to-transparent" />
+                                <StatBadge value="<50ms" label="Latence API" delay={900} />
+                                <div className="w-px h-12 bg-gradient-to-b from-transparent via-slate-700 to-transparent" />
+                                <StatBadge value="∞" label="VMs" delay={1000} />
                             </div>
                         </div>
 
@@ -151,33 +268,42 @@ export default function LoginPage() {
                                 icon={Server}
                                 title="Instances"
                                 description="Créez et gérez vos VMs et conteneurs LXC en quelques clics"
-                                gradient="bg-cyan-500"
+                                gradient="cyan"
+                                delay={200}
                             />
                             <FeatureCard
                                 icon={HardDrive}
                                 title="Stockage"
                                 description="Visualisez et organisez vos volumes de stockage"
-                                gradient="bg-violet-500"
+                                gradient="violet"
+                                delay={300}
                             />
                             <FeatureCard
                                 icon={Shield}
                                 title="Sécurité"
                                 description="Pare-feu intégré et gestion des règles de sécurité"
-                                gradient="bg-emerald-500"
+                                gradient="emerald"
+                                delay={400}
                             />
                             <FeatureCard
                                 icon={BarChart3}
                                 title="Monitoring"
                                 description="Surveillance en temps réel de vos ressources"
-                                gradient="bg-orange-500"
+                                gradient="orange"
+                                delay={500}
                             />
                         </div>
                     </div>
                 </main>
 
                 {/* Footer */}
-                <footer className="p-6 text-center text-sm text-slate-500">
-                    <p>© 2024 Cloud Proxmox • Propulsé par Proxmox VE</p>
+                <footer className="p-6 text-center">
+                    <p
+                        className="text-sm text-slate-500"
+                        style={{ animation: 'fadeIn 1s ease-out forwards', animationDelay: '1.2s', opacity: 0 }}
+                    >
+                        © 2024 Cloud Proxmox • Propulsé par Proxmox VE
+                    </p>
                 </footer>
             </div>
         </div>
