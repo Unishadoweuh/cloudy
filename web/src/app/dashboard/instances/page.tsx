@@ -118,6 +118,10 @@ function InstanceCard({ instance }: { instance: Instance }) {
     const isVM = instance.type === 'qemu';
     const colorClass = isVM ? 'bg-cyan-500' : 'bg-violet-500';
 
+    // Calculate usage percentages
+    const cpuPercent = isRunning && instance.cpu ? (instance.cpu * 100) : 0;
+    const memPercent = isRunning && instance.mem && instance.maxmem ? (instance.mem / instance.maxmem) * 100 : 0;
+
     return (
         <Card
             className={cn(
@@ -130,7 +134,7 @@ function InstanceCard({ instance }: { instance: Instance }) {
         >
             <div className={cn("absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl opacity-20 -translate-y-1/2 translate-x-1/2", colorClass)} />
             <CardContent className="p-5">
-                <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
                         <div className={cn(
                             "p-2.5 rounded-xl",
@@ -158,6 +162,43 @@ function InstanceCard({ instance }: { instance: Instance }) {
                         {instance.status}
                     </Badge>
                 </div>
+
+                {/* Resource usage bars */}
+                {isRunning && (
+                    <div className="space-y-2 mb-3">
+                        <div>
+                            <div className="flex justify-between text-[10px] mb-1">
+                                <span className="text-slate-500">CPU</span>
+                                <span className="text-slate-400">{cpuPercent.toFixed(0)}%</span>
+                            </div>
+                            <div className="h-1 bg-slate-700 rounded-full overflow-hidden">
+                                <div
+                                    className={cn(
+                                        "h-full rounded-full transition-all duration-300",
+                                        cpuPercent > 80 ? "bg-red-400" : cpuPercent > 60 ? "bg-amber-400" : "bg-cyan-400"
+                                    )}
+                                    style={{ width: `${Math.min(cpuPercent, 100)}%` }}
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <div className="flex justify-between text-[10px] mb-1">
+                                <span className="text-slate-500">RAM</span>
+                                <span className="text-slate-400">{formatBytes(instance.mem || 0)} / {formatBytes(instance.maxmem)}</span>
+                            </div>
+                            <div className="h-1 bg-slate-700 rounded-full overflow-hidden">
+                                <div
+                                    className={cn(
+                                        "h-full rounded-full transition-all duration-300",
+                                        memPercent > 80 ? "bg-red-400" : memPercent > 60 ? "bg-amber-400" : "bg-violet-400"
+                                    )}
+                                    style={{ width: `${Math.min(memPercent, 100)}%` }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <div className="flex items-center gap-4 text-xs text-slate-400">
                     <div className="flex items-center gap-1">
                         <Cpu className="h-3.5 w-3.5" />
