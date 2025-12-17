@@ -22,7 +22,7 @@ jobs:
     runs-on: linux
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: http://gitea.com/actions/checkout@v4
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
