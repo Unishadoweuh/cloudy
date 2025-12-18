@@ -223,16 +223,6 @@ export default function DashboardLayout({
                     })}
                 </div>
 
-                {/* Quick Actions */}
-                <div className="pt-4">
-                    <Link href="/dashboard/instances/new">
-                        <Button className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white shadow-lg shadow-cyan-500/20">
-                            <Plus className="mr-2 h-4 w-4" />
-                            {t('nav.newInstance')}
-                        </Button>
-                    </Link>
-                </div>
-
                 <div className="pt-2">
                     <Link
                         href="/dashboard/settings"

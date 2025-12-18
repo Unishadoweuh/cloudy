@@ -56,7 +56,8 @@ jobs:
           
           # Backup database (skip if db not running)
           echo "📦 Creating database backup..."
-          (docker compose -f docker-compose.prod.yml exec -T db pg_dump -U ${POSTGRES_USER} ${POSTGRES_DB} > backup_\$(date +%Y%m%d_%H%M%S).sql 2>/dev/null) || echo "No existing DB to backup"
+          mkdir -p backups
+          (docker compose -f docker-compose.prod.yml exec -T db pg_dump -U \${POSTGRES_USER} \${POSTGRES_DB} > backups/backup_\$(date +%Y%m%d_%H%M%S).sql 2>/dev/null && echo "✅ Backup created") || echo "No existing DB to backup"
           
           # Build and restart services
           echo "🔨 Building and restarting services..."
@@ -73,14 +74,14 @@ jobs:
           # Health checks
           echo "🏥 Running health checks..."
           
-          if curl -sf http://localhost:${API_PORT:-3001}/health > /dev/null 2>&1 || curl -sf http://localhost:${API_PORT:-3001}/ > /dev/null 2>&1; then
+          if curl -sf http://localhost:\${API_PORT:-3001}/health > /dev/null 2>&1 || curl -sf http://localhost:\${API_PORT:-3001}/ > /dev/null 2>&1; then
             echo "✅ API is healthy"
           else
             echo "⚠️ API check inconclusive, checking logs..."
             docker compose -f docker-compose.prod.yml logs --tail=20 api
           fi
           
-          if curl -sf http://localhost:${WEB_PORT:-3000}/ > /dev/null 2>&1; then
+          if curl -sf http://localhost:\${WEB_PORT:-3000}/ > /dev/null 2>&1; then
             echo "✅ Web is healthy"
           else
             echo "⚠️ Web check inconclusive, checking logs..."
@@ -92,7 +93,7 @@ jobs:
           docker image prune -f
           
           # Keep only last 5 backups
-          ls -t backup_*.sql 2>/dev/null | tail -n +6 | xargs -r rm
+          ls -t backups/backup_*.sql 2>/dev/null | tail -n +6 | xargs -r rm
           
           echo "✅ Deployment complete!"
           DEPLOY_SCRIPT

@@ -3,3 +3,5 @@
 deploy.sh
 assign_ownership.sh
 *.sql
+# Database backups
+backups/
