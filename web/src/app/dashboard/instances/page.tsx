@@ -503,10 +503,10 @@ export default function InstancesPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">Instances</h1>
-                    <p className="text-slate-500 text-sm">Manage your virtual machines and containers</p>
+                    <h1 className="text-xl sm:text-2xl font-bold text-white">Instances</h1>
+                    <p className="text-slate-500 text-sm hidden sm:block">Manage your virtual machines and containers</p>
                 </div>
                 <div className="flex gap-2">
                     <Button
@@ -520,19 +520,19 @@ export default function InstancesPage() {
                     </Button>
                     <Button asChild className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700/50">
                         <Link href="/dashboard/instances/new">
-                            <Plus className="mr-2 h-4 w-4" />
-                            New Instance
+                            <Plus className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">New Instance</span>
                         </Link>
                     </Button>
                 </div>
             </div>
 
             {/* Stats */}
-            <div className="grid gap-3 md:grid-cols-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <StatsCard title="Total" value={allInstances.length} icon={Server} color="bg-cyan-500" />
                 <StatsCard title="Running" value={runningCount} icon={Activity} color="bg-emerald-500" />
                 <StatsCard title="Stopped" value={stoppedCount} icon={Box} color="bg-amber-500" />
-                <StatsCard title="vCPUs allocated" value={totalCores} icon={Cpu} color="bg-violet-500" />
+                <StatsCard title="vCPUs" value={totalCores} icon={Cpu} color="bg-violet-500" />
             </div>
 
             {/* Filters Bar */}

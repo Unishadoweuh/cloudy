@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -25,6 +26,8 @@ import {
     Bell,
     Archive,
     Wallet,
+    Menu,
+    X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NotificationsPopover } from "@/components/notifications-popover";
@@ -38,6 +41,21 @@ export default function DashboardLayout({
     const { t } = useLanguage();
     const themeClasses = useThemeClasses();
     const { enabled: billingEnabled } = useBillingConfig();
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    // Close sidebar on route change
+    useEffect(() => {
+        setSidebarOpen(false);
+    }, [pathname]);
+
+    // Close sidebar on escape key
+    useEffect(() => {
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setSidebarOpen(false);
+        };
+        window.addEventListener('keydown', handleEscape);
+        return () => window.removeEventListener('keydown', handleEscape);
+    }, []);
 
     // Fetch instances to show count badges
     const { data: instances } = useQuery({
@@ -53,11 +71,11 @@ export default function DashboardLayout({
     type NavigationItem = {
         name: string;
         href: string;
-        icon: any;
-        exact?: boolean;
-        disabled?: boolean;
-        badge?: number | string;
+        icon: React.ElementType;
+        badge?: string | number;
         badgeColor?: string;
+        disabled?: boolean;
+        exact?: boolean;
     };
 
     const navigation: NavigationItem[] = [
@@ -72,7 +90,12 @@ export default function DashboardLayout({
             href: "/dashboard/instances",
             icon: Server,
             badge: instanceCount > 0 ? `${runningCount}/${instanceCount}` : undefined,
-            badgeColor: runningCount > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-400',
+            badgeColor: runningCount > 0 ? "bg-emerald-500/20 text-emerald-400" : undefined,
+        },
+        {
+            name: 'Monitoring',
+            href: "/dashboard/monitoring",
+            icon: BarChart3,
         },
         {
             name: t('nav.volumes'),
@@ -99,16 +122,6 @@ export default function DashboardLayout({
 
     const secondaryNav: NavigationItem[] = [
         {
-            name: t('nav.security'),
-            href: "/dashboard/security",
-            icon: Shield,
-        },
-        {
-            name: t('nav.monitoring'),
-            href: "/dashboard/monitoring",
-            icon: BarChart3,
-        },
-        {
             name: t('nav.users'),
             href: "/dashboard/users",
             icon: Users,
@@ -119,6 +132,138 @@ export default function DashboardLayout({
             icon: Shield,
         },
     ];
+
+    // Sidebar content (reusable for both mobile and desktop)
+    const SidebarContent = () => (
+        <div className="flex flex-col h-full">
+            {/* Logo */}
+            <div className="p-5 border-b border-slate-800/50">
+                <Link href="/dashboard" className="flex items-center gap-3 group">
+                    <div className="p-2.5 bg-slate-800 rounded-xl group-hover:bg-slate-700 transition-colors">
+                        <Zap className="h-5 w-5 text-cyan-400" />
+                    </div>
+                    <div>
+                        <h1 className="text-lg font-bold text-white">Uni-Cloud</h1>
+                        <p className="text-xs text-slate-500">Proxmox Dashboard</p>
+                    </div>
+                </Link>
+            </div>
+
+            {/* Main Navigation */}
+            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+                <p className="px-3 text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">
+                    Infrastructure
+                </p>
+                {navigation.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = item.exact
+                        ? pathname === item.href
+                        : pathname.startsWith(item.href);
+
+                    return (
+                        <Link
+                            key={item.href}
+                            href={item.disabled ? "#" : item.href}
+                            className={cn(
+                                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
+                                isActive
+                                    ? themeClasses.sidebarActive
+                                    : "text-slate-400 hover:text-white hover:bg-slate-800/50",
+                                item.disabled ? "opacity-40 cursor-not-allowed pointer-events-none" : ""
+                            )}
+                        >
+                            <Icon className="h-5 w-5" />
+                            <span className="font-medium">{item.name}</span>
+                            {item.badge && (
+                                <span className={cn(
+                                    "ml-auto text-[10px] px-1.5 py-0.5 rounded font-medium",
+                                    item.badgeColor || "bg-slate-700 text-slate-400"
+                                )}>
+                                    {item.badge}
+                                </span>
+                            )}
+                            {item.disabled && !item.badge && (
+                                <span className="ml-auto text-[10px] bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded">
+                                    Soon
+                                </span>
+                            )}
+                        </Link>
+                    );
+                })}
+
+                <div className="pt-4">
+                    <p className="px-3 text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">
+                        Management
+                    </p>
+                    {secondaryNav.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = pathname.startsWith(item.href);
+
+                        return (
+                            <Link
+                                key={item.href}
+                                href={item.disabled ? "#" : item.href}
+                                className={cn(
+                                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
+                                    isActive
+                                        ? themeClasses.sidebarActive
+                                        : "text-slate-400 hover:text-white hover:bg-slate-800/50",
+                                    item.disabled && "opacity-40 cursor-not-allowed pointer-events-none"
+                                )}
+                            >
+                                <Icon className="h-5 w-5" />
+                                <span className="font-medium">{item.name}</span>
+                                {item.disabled && (
+                                    <span className="ml-auto text-[10px] bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded">
+                                        Soon
+                                    </span>
+                                )}
+                            </Link>
+                        );
+                    })}
+                </div>
+
+                {/* Quick Actions */}
+                <div className="pt-4">
+                    <Link href="/dashboard/instances/new">
+                        <Button className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white shadow-lg shadow-cyan-500/20">
+                            <Plus className="mr-2 h-4 w-4" />
+                            {t('nav.newInstance')}
+                        </Button>
+                    </Link>
+                </div>
+
+                <div className="pt-2">
+                    <Link
+                        href="/dashboard/settings"
+                        className={cn(
+                            "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
+                            pathname === '/dashboard/settings'
+                                ? "bg-slate-800 text-white"
+                                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                        )}
+                    >
+                        <Settings className={cn("h-5 w-5", pathname === '/dashboard/settings' && "text-cyan-400")} />
+                        <span className="font-medium">{t('common.settings')}</span>
+                    </Link>
+
+                    {/* Status - hidden on main dashboard page */}
+                    {pathname !== '/dashboard' && (
+                        <div className="mt-4 px-3 py-3 rounded-lg bg-slate-800/50 border border-slate-700/30">
+                            <div className="flex items-center gap-2">
+                                <span className="relative flex h-2.5 w-2.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
+                                </span>
+                                <span className="text-sm text-white">{t('dashboard.systemOnline')}</span>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1 ml-4">{t('dashboard.allServicesRunning')}</p>
+                        </div>
+                    )}
+                </div>
+            </nav>
+        </div>
+    );
 
     return (
         <div className="min-h-screen flex bg-slate-900">
@@ -134,142 +279,69 @@ export default function DashboardLayout({
                 )} />
             </div>
 
-            {/* Sidebar */}
+            {/* Mobile Sidebar Overlay */}
+            {sidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/60 z-40 lg:hidden"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
+
+            {/* Sidebar - Desktop (always visible) */}
             <aside className={cn(
-                "fixed left-0 top-0 z-40 h-screen w-64 border-r",
+                "fixed left-0 top-0 z-40 h-screen w-64 border-r hidden lg:block",
                 themeClasses.sidebarBg,
                 themeClasses.sidebarBorder
             )}>
-                <div className="flex flex-col h-full">
-                    {/* Logo */}
-                    <div className="p-5 border-b border-slate-800/50">
-                        <Link href="/dashboard" className="flex items-center gap-3 group">
-                            <div className="p-2.5 bg-slate-800 rounded-xl group-hover:bg-slate-700 transition-colors">
-                                <Zap className="h-5 w-5 text-cyan-400" />
-                            </div>
-                            <div>
-                                <h1 className="text-lg font-bold text-white">Uni-Cloud</h1>
-                                <p className="text-xs text-slate-500">Proxmox Dashboard</p>
-                            </div>
-                        </Link>
-                    </div>
+                <SidebarContent />
+            </aside>
 
-                    {/* Main Navigation */}
-                    <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-                        <p className="px-3 text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">
-                            Infrastructure
-                        </p>
-                        {navigation.map((item) => {
-                            const Icon = item.icon;
-                            const isActive = item.exact
-                                ? pathname === item.href
-                                : pathname.startsWith(item.href);
-
-                            return (
-                                <Link
-                                    key={item.href}
-                                    href={item.disabled ? "#" : item.href}
-                                    className={cn(
-                                        "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
-                                        isActive
-                                            ? themeClasses.sidebarActive
-                                            : "text-slate-400 hover:text-white hover:bg-slate-800/50",
-                                        item.disabled ? "opacity-40 cursor-not-allowed pointer-events-none" : ""
-                                    )}
-                                >
-                                    <Icon className="h-5 w-5" />
-                                    <span className="font-medium">{item.name}</span>
-                                    {item.badge && (
-                                        <span className={cn(
-                                            "ml-auto text-[10px] px-1.5 py-0.5 rounded font-medium",
-                                            item.badgeColor || "bg-slate-700 text-slate-400"
-                                        )}>
-                                            {item.badge}
-                                        </span>
-                                    )}
-                                    {item.disabled && !item.badge && (
-                                        <span className="ml-auto text-[10px] bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded">
-                                            Soon
-                                        </span>
-                                    )}
-                                </Link>
-                            );
-                        })}
-
-                        <div className="pt-4">
-                            <p className="px-3 text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">
-                                Management
-                            </p>
-                            {secondaryNav.map((item) => {
-                                const Icon = item.icon;
-                                const isActive = pathname.startsWith(item.href);
-
-                                return (
-                                    <Link
-                                        key={item.href}
-                                        href={item.disabled ? "#" : item.href}
-                                        className={cn(
-                                            "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
-                                            isActive
-                                                ? themeClasses.sidebarActive
-                                                : "text-slate-400 hover:text-white hover:bg-slate-800/50",
-                                            item.disabled && "opacity-40 cursor-not-allowed pointer-events-none"
-                                        )}
-                                    >
-                                        <Icon className="h-5 w-5" />
-                                        <span className="font-medium">{item.name}</span>
-                                        {item.disabled && (
-                                            <span className="ml-auto text-[10px] bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded">
-                                                Soon
-                                            </span>
-                                        )}
-                                    </Link>
-                                );
-                            })}
-                        </div>
-                    </nav>
-
-                    {/* Bottom Section */}
-                    <div className="p-4 border-t border-slate-800/50 space-y-2">
-                        <NotificationsPopover />
-
-                        <Link
-                            href="/dashboard/settings"
-                            className={cn(
-                                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
-                                pathname === '/dashboard/settings'
-                                    ? "bg-slate-800 text-white"
-                                    : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-                            )}
-                        >
-                            <Settings className={cn("h-5 w-5", pathname === '/dashboard/settings' && "text-cyan-400")} />
-                            <span className="font-medium">{t('common.settings')}</span>
-                        </Link>
-
-                        {/* Status - hidden on main dashboard page */}
-                        {pathname !== '/dashboard' && (
-                            <div className="mt-4 px-3 py-3 rounded-lg bg-slate-800/50 border border-slate-700/30">
-                                <div className="flex items-center gap-2">
-                                    <span className="relative flex h-2.5 w-2.5">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
-                                    </span>
-                                    <span className="text-sm text-white">{t('dashboard.systemOnline')}</span>
-                                </div>
-                                <p className="text-xs text-slate-500 mt-1 ml-4">{t('dashboard.allServicesRunning')}</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
+            {/* Sidebar - Mobile (slide-in drawer) */}
+            <aside className={cn(
+                "fixed left-0 top-0 z-50 h-screen w-72 border-r transform transition-transform duration-300 ease-in-out lg:hidden",
+                themeClasses.sidebarBg,
+                themeClasses.sidebarBorder,
+                sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            )}>
+                {/* Close button */}
+                <button
+                    onClick={() => setSidebarOpen(false)}
+                    className="absolute top-4 right-4 p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors"
+                >
+                    <X className="h-5 w-5" />
+                </button>
+                <SidebarContent />
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 ml-64">
-                <div className="p-8">
-                    <div className="flex items-center justify-between mb-4">
-                        <Breadcrumbs />
-                        <GlobalSearch />
+            <main className="flex-1 lg:ml-64">
+                {/* Mobile Header */}
+                <div className="sticky top-0 z-30 lg:hidden bg-slate-900/95 backdrop-blur-sm border-b border-slate-800/50">
+                    <div className="flex items-center justify-between px-4 py-3">
+                        <button
+                            onClick={() => setSidebarOpen(true)}
+                            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors"
+                        >
+                            <Menu className="h-6 w-6" />
+                        </button>
+                        <Link href="/dashboard" className="flex items-center gap-2">
+                            <Zap className="h-5 w-5 text-cyan-400" />
+                            <span className="font-bold text-white">Uni-Cloud</span>
+                        </Link>
+                        <div className="flex items-center gap-2">
+                            <GlobalSearch />
+                        </div>
                     </div>
+                </div>
+
+                {/* Desktop Header */}
+                <div className="hidden lg:flex items-center justify-between p-8 pb-4">
+                    <Breadcrumbs />
+                    <GlobalSearch />
+                </div>
+
+                {/* Page Content */}
+                <div className="p-4 lg:p-8 lg:pt-0">
                     {children}
                 </div>
             </main>
