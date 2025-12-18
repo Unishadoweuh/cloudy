@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { VncConsole } from '@/components/VncConsole';
+import { SnapshotsTab } from '@/components/SnapshotsTab';
 import {
     LineChart,
     Line,
@@ -41,6 +42,7 @@ import {
     Globe,
     ExternalLink,
     RefreshCw,
+    Camera,
 } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
@@ -416,6 +418,13 @@ export default function InstanceDetailsPage() {
                     >
                         <Activity className="mr-2 h-4 w-4" />
                         Monitoring
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="snapshots"
+                        className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary transition-all"
+                    >
+                        <Camera className="mr-2 h-4 w-4" />
+                        Snapshots
                     </TabsTrigger>
                 </TabsList>
 
@@ -803,6 +812,16 @@ export default function InstanceDetailsPage() {
                             </Card>
                         </div>
                     )}
+                </TabsContent>
+
+                {/* Snapshots Tab */}
+                <TabsContent value="snapshots" className="mt-6">
+                    <SnapshotsTab
+                        vmid={parseInt(id)}
+                        node={instance.node}
+                        type={instance.type as 'qemu' | 'lxc'}
+                        isRunning={isRunning}
+                    />
                 </TabsContent>
             </Tabs>
         </div>
