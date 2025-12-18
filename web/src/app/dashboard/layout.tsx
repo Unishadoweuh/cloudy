@@ -109,8 +109,8 @@ export default function DashboardLayout({
             icon: Users,
         },
         {
-            name: 'Admin Crédits',
-            href: "/dashboard/admin/billing",
+            name: 'Administration',
+            href: "/dashboard/admin",
             icon: Shield,
         },
     ];
