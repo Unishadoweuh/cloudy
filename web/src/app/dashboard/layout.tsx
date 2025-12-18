@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { useLanguage } from "@/lib/language-context";
+import { useThemeClasses } from "@/lib/theme-context";
 import { getInstances, getMe } from "@/lib/api";
 import type { Instance } from "@/lib/types";
 import {
@@ -34,6 +35,7 @@ export default function DashboardLayout({
 }) {
     const pathname = usePathname();
     const { t } = useLanguage();
+    const themeClasses = useThemeClasses();
 
     // Fetch instances to show count badges
     const { data: instances } = useQuery({
@@ -117,8 +119,24 @@ export default function DashboardLayout({
 
     return (
         <div className="min-h-screen flex bg-slate-900">
+            {/* Background Orbs */}
+            <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+                <div className={cn(
+                    "absolute top-0 left-0 w-[500px] h-[500px] rounded-full blur-[150px] opacity-50",
+                    themeClasses.orbPrimary
+                )} />
+                <div className={cn(
+                    "absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full blur-[150px] opacity-50",
+                    themeClasses.orbSecondary
+                )} />
+            </div>
+
             {/* Sidebar */}
-            <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-slate-900 border-r border-slate-800/50">
+            <aside className={cn(
+                "fixed left-0 top-0 z-40 h-screen w-64 border-r",
+                themeClasses.sidebarBg,
+                themeClasses.sidebarBorder
+            )}>
                 <div className="flex flex-col h-full">
                     {/* Logo */}
                     <div className="p-5 border-b border-slate-800/50">
@@ -151,12 +169,12 @@ export default function DashboardLayout({
                                     className={cn(
                                         "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
                                         isActive
-                                            ? "bg-slate-800 text-white"
+                                            ? themeClasses.sidebarActive
                                             : "text-slate-400 hover:text-white hover:bg-slate-800/50",
                                         item.disabled ? "opacity-40 cursor-not-allowed pointer-events-none" : ""
                                     )}
                                 >
-                                    <Icon className={cn("h-5 w-5", isActive && "text-cyan-400")} />
+                                    <Icon className="h-5 w-5" />
                                     <span className="font-medium">{item.name}</span>
                                     {item.badge && (
                                         <span className={cn(
@@ -190,12 +208,12 @@ export default function DashboardLayout({
                                         className={cn(
                                             "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
                                             isActive
-                                                ? "bg-slate-800 text-white"
+                                                ? themeClasses.sidebarActive
                                                 : "text-slate-400 hover:text-white hover:bg-slate-800/50",
                                             item.disabled && "opacity-40 cursor-not-allowed pointer-events-none"
                                         )}
                                     >
-                                        <Icon className={cn("h-5 w-5", isActive && "text-cyan-400")} />
+                                        <Icon className="h-5 w-5" />
                                         <span className="font-medium">{item.name}</span>
                                         {item.disabled && (
                                             <span className="ml-auto text-[10px] bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded">
