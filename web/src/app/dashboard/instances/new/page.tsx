@@ -262,12 +262,8 @@ function TemplateCard({
             )}
 
             <div className="flex items-center gap-3">
-                <div className={cn(
-                    "w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden",
-                    "bg-gradient-to-br",
-                    osInfo.color
-                )}>
-                    <OSIcon osInfo={osInfo} size={32} />
+                <div className="w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden bg-slate-700/50">
+                    <OSIcon osInfo={osInfo} size={40} />
                 </div>
                 <div className="flex-1 min-w-0">
                     <h4 className="font-semibold text-white truncate">{template.name}</h4>
