@@ -163,25 +163,72 @@ function TypeCard({
     );
 }
 
-// OS Detection and Icons
-function getOSInfo(name: string): { os: string; icon: string; color: string } {
-    const nameLower = name.toLowerCase();
+// OS Detection and Icon mapping
+// Icons should be placed in /public/os-icons/ as PNG files
+// Example: ubuntu.png, debian.png, windows.png, etc.
+const OS_PATTERNS: { pattern: RegExp; os: string; icon: string; color: string }[] = [
+    { pattern: /ubuntu/i, os: 'Ubuntu', icon: 'ubuntu', color: 'from-orange-500 to-orange-600' },
+    { pattern: /debian/i, os: 'Debian', icon: 'debian', color: 'from-red-500 to-red-600' },
+    { pattern: /centos/i, os: 'CentOS', icon: 'centos', color: 'from-purple-500 to-purple-600' },
+    { pattern: /rocky/i, os: 'Rocky Linux', icon: 'rocky', color: 'from-green-500 to-green-600' },
+    { pattern: /alma/i, os: 'AlmaLinux', icon: 'alma', color: 'from-blue-500 to-blue-600' },
+    { pattern: /fedora/i, os: 'Fedora', icon: 'fedora', color: 'from-blue-400 to-blue-500' },
+    { pattern: /arch/i, os: 'Arch Linux', icon: 'arch', color: 'from-cyan-500 to-cyan-600' },
+    { pattern: /alpine/i, os: 'Alpine', icon: 'alpine', color: 'from-slate-400 to-slate-500' },
+    { pattern: /windows/i, os: 'Windows', icon: 'windows', color: 'from-sky-500 to-sky-600' },
+    { pattern: /opensuse|suse/i, os: 'openSUSE', icon: 'opensuse', color: 'from-green-500 to-green-600' },
+    { pattern: /mint/i, os: 'Linux Mint', icon: 'mint', color: 'from-emerald-500 to-emerald-600' },
+    { pattern: /kali/i, os: 'Kali Linux', icon: 'kali', color: 'from-blue-600 to-blue-700' },
+    { pattern: /proxmox/i, os: 'Proxmox', icon: 'proxmox', color: 'from-orange-600 to-orange-700' },
+    { pattern: /rhel|redhat/i, os: 'RHEL', icon: 'rhel', color: 'from-red-600 to-red-700' },
+    { pattern: /gentoo/i, os: 'Gentoo', icon: 'gentoo', color: 'from-purple-400 to-purple-500' },
+    { pattern: /nixos/i, os: 'NixOS', icon: 'nixos', color: 'from-blue-500 to-blue-600' },
+    { pattern: /freebsd/i, os: 'FreeBSD', icon: 'freebsd', color: 'from-red-500 to-red-600' },
+];
 
-    if (nameLower.includes('ubuntu')) return { os: 'Ubuntu', icon: '🟠', color: 'from-orange-500 to-orange-600' };
-    if (nameLower.includes('debian')) return { os: 'Debian', icon: '🔴', color: 'from-red-500 to-red-600' };
-    if (nameLower.includes('centos') || nameLower.includes('rocky') || nameLower.includes('alma'))
-        return { os: 'RHEL', icon: '🔵', color: 'from-blue-500 to-blue-600' };
-    if (nameLower.includes('fedora')) return { os: 'Fedora', icon: '🔵', color: 'from-blue-400 to-blue-500' };
-    if (nameLower.includes('arch')) return { os: 'Arch', icon: '🔷', color: 'from-cyan-500 to-cyan-600' };
-    if (nameLower.includes('alpine')) return { os: 'Alpine', icon: '⬜', color: 'from-slate-400 to-slate-500' };
-    if (nameLower.includes('windows')) return { os: 'Windows', icon: '🪟', color: 'from-sky-500 to-sky-600' };
-    if (nameLower.includes('opensuse') || nameLower.includes('suse'))
-        return { os: 'openSUSE', icon: '🟢', color: 'from-green-500 to-green-600' };
-    if (nameLower.includes('mint')) return { os: 'Linux Mint', icon: '🟢', color: 'from-emerald-500 to-emerald-600' };
-    if (nameLower.includes('kali')) return { os: 'Kali', icon: '🐉', color: 'from-blue-600 to-blue-700' };
-    if (nameLower.includes('proxmox')) return { os: 'Proxmox', icon: '🟧', color: 'from-orange-600 to-orange-700' };
+function getOSInfo(name: string): { os: string; icon: string; color: string; iconPath: string } {
+    for (const osPattern of OS_PATTERNS) {
+        if (osPattern.pattern.test(name)) {
+            return {
+                os: osPattern.os,
+                icon: osPattern.icon,
+                color: osPattern.color,
+                iconPath: `/os-icons/${osPattern.icon}.png`,
+            };
+        }
+    }
+    // Default fallback
+    return {
+        os: 'Linux',
+        icon: 'linux',
+        color: 'from-slate-500 to-slate-600',
+        iconPath: '/os-icons/linux.png',
+    };
+}
 
-    return { os: 'Linux', icon: '🐧', color: 'from-slate-500 to-slate-600' };
+// Component to display OS icon with fallback
+function OSIcon({ osInfo, size = 32 }: { osInfo: ReturnType<typeof getOSInfo>; size?: number }) {
+    const [imgError, setImgError] = useState(false);
+
+    if (imgError) {
+        // Fallback to first letter of OS name
+        return (
+            <div className="w-full h-full flex items-center justify-center text-white font-bold text-lg">
+                {osInfo.os.charAt(0)}
+            </div>
+        );
+    }
+
+    return (
+        <img
+            src={osInfo.iconPath}
+            alt={osInfo.os}
+            width={size}
+            height={size}
+            className="object-contain"
+            onError={() => setImgError(true)}
+        />
+    );
 }
 
 function TemplateCard({
@@ -216,11 +263,11 @@ function TemplateCard({
 
             <div className="flex items-center gap-3">
                 <div className={cn(
-                    "w-12 h-12 rounded-lg flex items-center justify-center text-2xl",
+                    "w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden",
                     "bg-gradient-to-br",
                     osInfo.color
                 )}>
-                    {osInfo.icon}
+                    <OSIcon osInfo={osInfo} size={32} />
                 </div>
                 <div className="flex-1 min-w-0">
                     <h4 className="font-semibold text-white truncate">{template.name}</h4>
