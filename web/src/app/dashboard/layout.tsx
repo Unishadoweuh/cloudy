@@ -8,6 +8,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { useLanguage } from "@/lib/language-context";
 import { useThemeClasses } from "@/lib/theme-context";
+import { useBillingConfig } from "@/lib/billing-config";
 import { getInstances, getMe } from "@/lib/api";
 import type { Instance } from "@/lib/types";
 import {
@@ -36,6 +37,7 @@ export default function DashboardLayout({
     const pathname = usePathname();
     const { t } = useLanguage();
     const themeClasses = useThemeClasses();
+    const { enabled: billingEnabled } = useBillingConfig();
 
     // Fetch instances to show count badges
     const { data: instances } = useQuery({
@@ -87,11 +89,12 @@ export default function DashboardLayout({
             href: "/dashboard/backups",
             icon: Archive,
         },
-        {
+        // Billing nav item - only shown if billing is enabled
+        ...(billingEnabled ? [{
             name: 'Facturation',
             href: "/dashboard/billing",
             icon: Wallet,
-        },
+        }] : []),
     ];
 
     const secondaryNav: NavigationItem[] = [

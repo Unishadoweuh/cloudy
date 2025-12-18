@@ -2,9 +2,11 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { getMe, getAllBalances, getInstances, getNodes } from '@/lib/api';
+import { useBillingConfig } from '@/lib/billing-config';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
 import {
     Shield,
@@ -17,6 +19,7 @@ import {
     BarChart3,
     Euro,
     HardDrive,
+    CreditCard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +37,7 @@ function AdminCard({
     href,
     stats,
     iconColor,
+    disabled,
 }: {
     title: string;
     description: string;
@@ -41,42 +45,60 @@ function AdminCard({
     href: string;
     stats?: { label: string; value: string | number }[];
     iconColor: string;
+    disabled?: boolean;
 }) {
-    return (
-        <Link href={href}>
-            <Card className="bg-slate-800/50 border-slate-700/50 hover:bg-slate-700/50 hover:border-slate-600/50 transition-all cursor-pointer group">
-                <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-4">
-                            <div className={cn("p-3 rounded-xl", iconColor)}>
-                                <Icon className="h-6 w-6 text-white" />
-                            </div>
-                            <div>
-                                <h3 className="font-semibold text-lg text-white group-hover:text-cyan-400 transition-colors">
-                                    {title}
-                                </h3>
-                                <p className="text-sm text-slate-400 mt-1">{description}</p>
-                                {stats && stats.length > 0 && (
-                                    <div className="flex gap-4 mt-3">
-                                        {stats.map((stat, i) => (
-                                            <div key={i} className="text-sm">
-                                                <span className="text-slate-500">{stat.label}:</span>{' '}
-                                                <span className="font-semibold text-white">{stat.value}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+    const content = (
+        <Card className={cn(
+            "bg-slate-800/50 border-slate-700/50 transition-all",
+            disabled
+                ? "opacity-50 cursor-not-allowed"
+                : "hover:bg-slate-700/50 hover:border-slate-600/50 cursor-pointer group"
+        )}>
+            <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                        <div className={cn("p-3 rounded-xl", iconColor)}>
+                            <Icon className="h-6 w-6 text-white" />
                         </div>
-                        <ChevronRight className="h-5 w-5 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-1 transition-all" />
+                        <div>
+                            <h3 className={cn(
+                                "font-semibold text-lg text-white transition-colors",
+                                !disabled && "group-hover:text-cyan-400"
+                            )}>
+                                {title}
+                            </h3>
+                            <p className="text-sm text-slate-400 mt-1">{description}</p>
+                            {stats && stats.length > 0 && (
+                                <div className="flex gap-4 mt-3">
+                                    {stats.map((stat, i) => (
+                                        <div key={i} className="text-sm">
+                                            <span className="text-slate-500">{stat.label}:</span>{' '}
+                                            <span className="font-semibold text-white">{stat.value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </CardContent>
-            </Card>
-        </Link>
+                    <ChevronRight className={cn(
+                        "h-5 w-5 text-slate-500 transition-all",
+                        !disabled && "group-hover:text-cyan-400 group-hover:translate-x-1"
+                    )} />
+                </div>
+            </CardContent>
+        </Card>
     );
+
+    if (disabled) {
+        return <div className="cursor-not-allowed">{content}</div>;
+    }
+
+    return <Link href={href}>{content}</Link>;
 }
 
 export default function AdminDashboardPage() {
+    const { enabled: billingEnabled, setEnabled: setBillingEnabled, loading: billingLoading } = useBillingConfig();
+
     // Check if user is admin
     const { data: currentUser } = useQuery({
         queryKey: ['me'],
@@ -86,7 +108,7 @@ export default function AdminDashboardPage() {
     const { data: balances } = useQuery({
         queryKey: ['admin-balances'],
         queryFn: getAllBalances,
-        enabled: currentUser?.role === 'ADMIN',
+        enabled: currentUser?.role === 'ADMIN' && billingEnabled,
     });
 
     const { data: instances } = useQuery({
@@ -132,6 +154,44 @@ export default function AdminDashboardPage() {
                 </div>
             </div>
 
+            {/* Billing System Toggle */}
+            <Card className="bg-gradient-to-r from-emerald-900/20 to-cyan-900/20 border-emerald-700/30">
+                <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-emerald-500/20">
+                                <CreditCard className="h-6 w-6 text-emerald-400" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-lg text-white">Système de Facturation</h3>
+                                <p className="text-sm text-slate-400 mt-1">
+                                    {billingEnabled
+                                        ? "Actif - Les utilisateurs voient leur solde et les pages de facturation"
+                                        : "Désactivé - Les pages de facturation sont masquées pour tous les utilisateurs"
+                                    }
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <Badge className={cn(
+                                "text-sm px-3 py-1",
+                                billingEnabled
+                                    ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                                    : "bg-slate-500/20 text-slate-400 border-slate-500/30"
+                            )}>
+                                {billingEnabled ? "Activé" : "Désactivé"}
+                            </Badge>
+                            <Switch
+                                checked={billingEnabled}
+                                onCheckedChange={setBillingEnabled}
+                                disabled={billingLoading}
+                                className="data-[state=checked]:bg-emerald-500"
+                            />
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* Quick Stats */}
             <div className="grid gap-4 md:grid-cols-4">
                 <Card className="bg-slate-800/50 border-slate-700/50">
@@ -139,18 +199,23 @@ export default function AdminDashboardPage() {
                         <div className="flex items-center gap-3">
                             <Users className="h-5 w-5 text-violet-400" />
                             <div>
-                                <p className="text-2xl font-bold">{userCount}</p>
+                                <p className="text-2xl font-bold">{userCount || '-'}</p>
                                 <p className="text-xs text-slate-400">Utilisateurs</p>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-slate-800/50 border-slate-700/50">
+                <Card className={cn(
+                    "bg-slate-800/50 border-slate-700/50",
+                    !billingEnabled && "opacity-50"
+                )}>
                     <CardContent className="p-4">
                         <div className="flex items-center gap-3">
                             <Euro className="h-5 w-5 text-emerald-400" />
                             <div>
-                                <p className="text-2xl font-bold">{formatCurrency(totalCredits)}</p>
+                                <p className="text-2xl font-bold">
+                                    {billingEnabled ? formatCurrency(totalCredits) : '-'}
+                                </p>
                                 <p className="text-xs text-slate-400">Crédits totaux</p>
                             </div>
                         </div>
@@ -188,10 +253,11 @@ export default function AdminDashboardPage() {
                     icon={Wallet}
                     href="/dashboard/admin/billing"
                     iconColor="bg-emerald-500"
-                    stats={[
+                    disabled={!billingEnabled}
+                    stats={billingEnabled ? [
                         { label: 'Utilisateurs', value: userCount },
                         { label: 'Total', value: formatCurrency(totalCredits) },
-                    ]}
+                    ] : undefined}
                 />
                 <AdminCard
                     title="Gestion des Utilisateurs"
@@ -200,7 +266,7 @@ export default function AdminDashboardPage() {
                     href="/dashboard/users"
                     iconColor="bg-violet-500"
                     stats={[
-                        { label: 'Total', value: userCount },
+                        { label: 'Total', value: userCount || instanceCount },
                     ]}
                 />
                 <AdminCard
@@ -242,3 +308,4 @@ export default function AdminDashboardPage() {
         </div>
     );
 }
+
