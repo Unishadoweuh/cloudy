@@ -163,6 +163,76 @@ function TypeCard({
     );
 }
 
+// OS Detection and Icons
+function getOSInfo(name: string): { os: string; icon: string; color: string } {
+    const nameLower = name.toLowerCase();
+
+    if (nameLower.includes('ubuntu')) return { os: 'Ubuntu', icon: '🟠', color: 'from-orange-500 to-orange-600' };
+    if (nameLower.includes('debian')) return { os: 'Debian', icon: '🔴', color: 'from-red-500 to-red-600' };
+    if (nameLower.includes('centos') || nameLower.includes('rocky') || nameLower.includes('alma'))
+        return { os: 'RHEL', icon: '🔵', color: 'from-blue-500 to-blue-600' };
+    if (nameLower.includes('fedora')) return { os: 'Fedora', icon: '🔵', color: 'from-blue-400 to-blue-500' };
+    if (nameLower.includes('arch')) return { os: 'Arch', icon: '🔷', color: 'from-cyan-500 to-cyan-600' };
+    if (nameLower.includes('alpine')) return { os: 'Alpine', icon: '⬜', color: 'from-slate-400 to-slate-500' };
+    if (nameLower.includes('windows')) return { os: 'Windows', icon: '🪟', color: 'from-sky-500 to-sky-600' };
+    if (nameLower.includes('opensuse') || nameLower.includes('suse'))
+        return { os: 'openSUSE', icon: '🟢', color: 'from-green-500 to-green-600' };
+    if (nameLower.includes('mint')) return { os: 'Linux Mint', icon: '🟢', color: 'from-emerald-500 to-emerald-600' };
+    if (nameLower.includes('kali')) return { os: 'Kali', icon: '🐉', color: 'from-blue-600 to-blue-700' };
+    if (nameLower.includes('proxmox')) return { os: 'Proxmox', icon: '🟧', color: 'from-orange-600 to-orange-700' };
+
+    return { os: 'Linux', icon: '🐧', color: 'from-slate-500 to-slate-600' };
+}
+
+function TemplateCard({
+    template,
+    selected,
+    onClick,
+}: {
+    template: { vmid: number; name: string; node?: string };
+    selected: boolean;
+    onClick: () => void;
+}) {
+    const osInfo = getOSInfo(template.name);
+
+    return (
+        <div
+            onClick={onClick}
+            className={cn(
+                "relative cursor-pointer rounded-xl p-4 transition-all border-2 group",
+                "hover:scale-[1.02] hover:shadow-lg",
+                selected
+                    ? "border-cyan-500 bg-cyan-500/10 shadow-cyan-500/20"
+                    : "border-slate-600 bg-slate-800/50 hover:border-slate-500"
+            )}
+        >
+            {selected && (
+                <div className="absolute top-3 right-3">
+                    <div className="p-1 rounded-full bg-cyan-500">
+                        <Check className="h-3 w-3 text-white" />
+                    </div>
+                </div>
+            )}
+
+            <div className="flex items-center gap-3">
+                <div className={cn(
+                    "w-12 h-12 rounded-lg flex items-center justify-center text-2xl",
+                    "bg-gradient-to-br",
+                    osInfo.color
+                )}>
+                    {osInfo.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-white truncate">{template.name}</h4>
+                    <p className="text-xs text-slate-400">
+                        {osInfo.os} • ID: {template.vmid}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function CreateInstancePage() {
     const router = useRouter();
     const [currentStep, setCurrentStep] = useState(0);
@@ -388,29 +458,31 @@ export default function CreateInstancePage() {
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-slate-200">Template</FormLabel>
-                                            <Select
-                                                onValueChange={field.onChange}
-                                                defaultValue={field.value}
-                                                disabled={!selectedNode || templatesLoading}
-                                            >
-                                                <FormControl>
-                                                    <SelectTrigger className="bg-slate-900/50 border-slate-600 text-white">
-                                                        <SelectValue placeholder={!selectedNode ? "Select a node first" : "Select a template"} />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent className="bg-slate-800 border-slate-700">
-                                                    {templates?.length === 0 && (
-                                                        <div className="p-3 text-sm text-slate-400 text-center">
-                                                            No templates found
-                                                        </div>
-                                                    )}
+                                            {!selectedNode ? (
+                                                <div className="p-4 rounded-lg bg-slate-900/50 border border-slate-700 text-center text-slate-400">
+                                                    Sélectionnez d'abord un nœud
+                                                </div>
+                                            ) : templatesLoading ? (
+                                                <div className="p-4 rounded-lg bg-slate-900/50 border border-slate-700 text-center text-slate-400">
+                                                    <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                                                    Chargement des templates...
+                                                </div>
+                                            ) : templates?.length === 0 ? (
+                                                <div className="p-4 rounded-lg bg-slate-900/50 border border-slate-700 text-center text-slate-400">
+                                                    Aucun template disponible sur ce nœud
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
                                                     {templates?.map((t: any) => (
-                                                        <SelectItem key={t.vmid} value={t.vmid.toString()}>
-                                                            {t.name} (ID: {t.vmid})
-                                                        </SelectItem>
+                                                        <TemplateCard
+                                                            key={t.vmid}
+                                                            template={t}
+                                                            selected={field.value === t.vmid.toString()}
+                                                            onClick={() => field.onChange(t.vmid.toString())}
+                                                        />
                                                     ))}
-                                                </SelectContent>
-                                            </Select>
+                                                </div>
+                                            )}
                                             <FormMessage />
                                         </FormItem>
                                     )}

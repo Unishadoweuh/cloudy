@@ -12,12 +12,14 @@ import {
     Wallet,
     Users,
     Plus,
+    Minus,
     Search,
     Euro,
     RefreshCw,
     Shield,
     User,
     ArrowUpRight,
+    ArrowDownRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -36,6 +38,7 @@ export default function AdminBillingPage() {
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const [creditAmount, setCreditAmount] = useState('');
     const [creditDescription, setCreditDescription] = useState('');
+    const [isDeducting, setIsDeducting] = useState(false);
 
     // Check if user is admin
     const { data: currentUser } = useQuery({
@@ -49,32 +52,39 @@ export default function AdminBillingPage() {
         enabled: currentUser?.role === 'ADMIN',
     });
 
-    const addCreditsMutation = useMutation({
+    const creditMutation = useMutation({
         mutationFn: ({ userId, amount, description }: { userId: string; amount: number; description?: string }) =>
             addCredits(userId, amount, description),
         onSuccess: (data) => {
-            toast.success('Crédits ajoutés', `Nouveau solde: ${formatCurrency(data.balance)}`);
+            toast.success(
+                isDeducting ? 'Crédits retirés' : 'Crédits ajoutés',
+                `Nouveau solde: ${formatCurrency(data.balance)}`
+            );
             queryClient.invalidateQueries({ queryKey: ['admin-balances'] });
             setSelectedUserId(null);
             setCreditAmount('');
             setCreditDescription('');
+            setIsDeducting(false);
         },
         onError: (error: Error) => {
             toast.error('Erreur', error.message);
         },
     });
 
-    const handleAddCredits = () => {
+    const handleCreditAction = () => {
         if (!selectedUserId || !creditAmount) return;
         const amount = parseFloat(creditAmount);
         if (isNaN(amount) || amount <= 0) {
             toast.error('Erreur', 'Montant invalide');
             return;
         }
-        addCreditsMutation.mutate({
+
+        // For deduction, we send negative amount (the backend API needs to support this)
+        // Alternatively, we can send positive and add a "deduct" flag
+        creditMutation.mutate({
             userId: selectedUserId,
-            amount,
-            description: creditDescription || undefined,
+            amount: isDeducting ? -amount : amount,
+            description: creditDescription || (isDeducting ? 'Retrait de crédits' : 'Ajout de crédits'),
         });
     };
 
@@ -104,10 +114,10 @@ export default function AdminBillingPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold flex items-center gap-3">
-                        <Shield className="h-8 w-8 text-amber-400" />
+                        <Shield className="h-8 w-8 text-red-400" />
                         Gestion des Crédits
                     </h1>
-                    <p className="text-slate-400 mt-1">Allouez des crédits aux utilisateurs</p>
+                    <p className="text-slate-400 mt-1">Allouez ou retirez des crédits aux utilisateurs</p>
                 </div>
                 <Button
                     variant="outline"
@@ -153,8 +163,8 @@ export default function AdminBillingPage() {
                 <Card className="bg-slate-800/50 border-slate-700/50">
                     <CardContent className="p-6">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 rounded-xl bg-amber-500/20">
-                                <Wallet className="h-6 w-6 text-amber-400" />
+                            <div className="p-3 rounded-xl bg-cyan-500/20">
+                                <Wallet className="h-6 w-6 text-cyan-400" />
                             </div>
                             <div>
                                 <p className="text-sm text-slate-400">Solde moyen</p>
@@ -212,7 +222,7 @@ export default function AdminBillingPage() {
                                             <div className="flex items-center gap-2">
                                                 <p className="font-medium">{item.user.username}</p>
                                                 {item.user.role === 'ADMIN' && (
-                                                    <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-xs">
+                                                    <Badge className="bg-red-500/20 text-red-300 border-red-500/30 text-xs">
                                                         Admin
                                                     </Badge>
                                                 )}
@@ -240,12 +250,12 @@ export default function AdminBillingPage() {
                     </CardContent>
                 </Card>
 
-                {/* Add Credits Panel */}
+                {/* Credit Panel */}
                 <Card className="bg-slate-800/50 border-slate-700/50">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <Plus className="h-5 w-5 text-emerald-400" />
-                            Ajouter des Crédits
+                            <Euro className="h-5 w-5 text-cyan-400" />
+                            Gérer les Crédits
                         </CardTitle>
                         <CardDescription>
                             Sélectionnez un utilisateur dans la liste
@@ -257,9 +267,40 @@ export default function AdminBillingPage() {
                                 <div className="p-4 rounded-lg bg-slate-900/50 border border-slate-700/50">
                                     <p className="text-sm text-slate-400">Utilisateur</p>
                                     <p className="font-semibold">{selectedUser.user.username}</p>
-                                    <p className="text-sm text-slate-500 mt-1">
-                                        Solde actuel: {formatCurrency(selectedUser.balance)}
+                                    <p className={cn(
+                                        "text-lg font-bold mt-1",
+                                        selectedUser.balance > 50 ? 'text-emerald-400' :
+                                            selectedUser.balance > 10 ? 'text-amber-400' :
+                                                'text-red-400'
+                                    )}>
+                                        Solde: {formatCurrency(selectedUser.balance)}
                                     </p>
+                                </div>
+
+                                {/* Add/Remove Toggle */}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button
+                                        variant={!isDeducting ? "default" : "outline"}
+                                        onClick={() => setIsDeducting(false)}
+                                        className={cn(
+                                            'gap-2',
+                                            !isDeducting && 'bg-emerald-600 hover:bg-emerald-700'
+                                        )}
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                        Ajouter
+                                    </Button>
+                                    <Button
+                                        variant={isDeducting ? "default" : "outline"}
+                                        onClick={() => setIsDeducting(true)}
+                                        className={cn(
+                                            'gap-2',
+                                            isDeducting && 'bg-red-600 hover:bg-red-700'
+                                        )}
+                                    >
+                                        <Minus className="h-4 w-4" />
+                                        Retirer
+                                    </Button>
                                 </div>
 
                                 <div className="space-y-2">
@@ -278,7 +319,7 @@ export default function AdminBillingPage() {
                                 <div className="space-y-2">
                                     <label className="text-sm text-slate-400">Description (optionnel)</label>
                                     <Input
-                                        placeholder="Recharge mensuelle"
+                                        placeholder={isDeducting ? "Raison du retrait" : "Recharge mensuelle"}
                                         value={creditDescription}
                                         onChange={(e) => setCreditDescription(e.target.value)}
                                         className="bg-slate-900/50 border-slate-700"
@@ -301,22 +342,35 @@ export default function AdminBillingPage() {
                                 </div>
 
                                 <Button
-                                    onClick={handleAddCredits}
-                                    disabled={!creditAmount || addCreditsMutation.isPending}
-                                    className="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600"
+                                    onClick={handleCreditAction}
+                                    disabled={!creditAmount || creditMutation.isPending}
+                                    className={cn(
+                                        'w-full',
+                                        isDeducting
+                                            ? 'bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600'
+                                            : 'bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600'
+                                    )}
                                 >
-                                    {addCreditsMutation.isPending ? (
+                                    {creditMutation.isPending ? (
                                         <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                                    ) : isDeducting ? (
+                                        <ArrowDownRight className="h-4 w-4 mr-2" />
                                     ) : (
                                         <ArrowUpRight className="h-4 w-4 mr-2" />
                                     )}
-                                    Ajouter {creditAmount ? formatCurrency(parseFloat(creditAmount) || 0) : ''}
+                                    {isDeducting ? 'Retirer' : 'Ajouter'} {creditAmount ? formatCurrency(parseFloat(creditAmount) || 0) : ''}
                                 </Button>
+
+                                {isDeducting && selectedUser.balance < parseFloat(creditAmount || '0') && (
+                                    <p className="text-xs text-red-400 text-center">
+                                        ⚠️ Le solde sera négatif après cette opération
+                                    </p>
+                                )}
                             </>
                         ) : (
                             <div className="text-center py-12 text-slate-500">
                                 <Wallet className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                                <p>Sélectionnez un utilisateur pour ajouter des crédits</p>
+                                <p>Sélectionnez un utilisateur pour gérer ses crédits</p>
                             </div>
                         )}
                     </CardContent>
