@@ -16,6 +16,20 @@ export class StorageController {
         return this.proxmoxService.getStoragePools(node);
     }
 
+    /**
+     * Get storage pools that support backups (content includes 'backup')
+     * This is used by the backup page to show available backup destinations
+     */
+    @Get('backup-pools')
+    async getBackupStorages(@Query('node') node?: string) {
+        const pools = await this.proxmoxService.getStoragePools(node);
+        // Filter for storages that can hold backups
+        return pools.filter((pool: any) => {
+            const content = pool.content || '';
+            return content.includes('backup');
+        });
+    }
+
     @Get('volumes')
     async getVolumes(
         @Query('node') node?: string,

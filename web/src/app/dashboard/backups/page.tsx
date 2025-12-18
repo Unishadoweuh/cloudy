@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getPbsStatus, getDatastores, getBackups, getBackupJobs, createBackup, deleteBackup, getInstances } from '@/lib/api';
+import { getPbsStatus, getDatastores, getBackups, getBackupJobs, createBackup, deleteBackup, getInstances, getBackupStorages } from '@/lib/api';
 import type { PbsStatus, Datastore, BackupGroup, BackupJob, Instance } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -282,10 +282,25 @@ export default function BackupsPage() {
         queryFn: getPbsStatus,
     });
 
-    const { data: datastores = [] } = useQuery({
-        queryKey: ['datastores'],
+    const { data: pbsDatastores = [] } = useQuery({
+        queryKey: ['pbs-datastores'],
         queryFn: getDatastores,
     });
+
+    // Get PVE backup storages (these are the actual vzdump destinations)
+    const { data: pveBackupStorages = [] } = useQuery({
+        queryKey: ['pve-backup-storages'],
+        queryFn: getBackupStorages,
+    });
+
+    // Combine datastores: prefer PVE storages, fallback to PBS datastores
+    // Convert PVE storages to match Datastore interface
+    const datastores: Datastore[] = pveBackupStorages.length > 0
+        ? pveBackupStorages.map((s: any) => ({
+            name: s.storage,
+            comment: `${s.type} - ${s.content}`,
+        }))
+        : pbsDatastores;
 
     const { data: backups = [], isLoading: backupsLoading } = useQuery({
         queryKey: ['backups', selectedDatastore],

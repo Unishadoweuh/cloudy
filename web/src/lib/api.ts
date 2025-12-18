@@ -460,6 +460,20 @@ export async function getDatastores(): Promise<Datastore[]> {
 }
 
 /**
+ * Get backup-capable storage pools from Proxmox VE
+ * These are storages that can be used as vzdump destinations
+ */
+export async function getBackupStorages(): Promise<any[]> {
+    try {
+        const response = await api.get<any[]>('/storage/backup-pools');
+        return response.data;
+    } catch (error) {
+        console.error('Failed to fetch backup storages:', error);
+        return [];
+    }
+}
+
+/**
  * Get datastore status/usage
  */
 export async function getDatastoreStatus(datastore: string): Promise<DatastoreStatus | null> {
