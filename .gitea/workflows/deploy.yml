@@ -57,7 +57,7 @@ jobs:
           # Backup database (skip if db not running)
           echo "📦 Creating database backup..."
           mkdir -p backups
-          (docker compose -f docker-compose.prod.yml exec -T db pg_dump -U \${POSTGRES_USER} \${POSTGRES_DB} > backups/backup_\$(date +%Y%m%d_%H%M%S).sql 2>/dev/null && echo "✅ Backup created") || echo "No existing DB to backup"
+          (docker compose -f docker-compose.prod.yml exec -T postgres pg_dump -U \${DB_USER:-cloud} \${DB_NAME:-cloud_proxmox} > backups/backup_\$(date +%Y%m%d_%H%M%S).sql 2>/dev/null && echo "✅ Backup created") || echo "No existing DB to backup"
           
           # Build and restart services
           echo "🔨 Building and restarting services..."
