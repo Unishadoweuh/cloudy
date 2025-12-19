@@ -51,7 +51,12 @@ export class PbsService {
 
         try {
             const res = await this.client.get('/api2/json/admin/datastore');
-            return res.data?.data || [];
+            // PBS API returns 'store' field, normalize to 'name' for frontend
+            const datastores = res.data?.data || [];
+            return datastores.map((ds: any) => ({
+                ...ds,
+                name: ds.store || ds.name,
+            }));
         } catch (error) {
             this.logger.error(`Error fetching PBS datastores: ${error.message}`);
             return [];
