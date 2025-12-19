@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getPbsStatus, getDatastores, getBackups, getBackupJobs, createBackup, deleteBackup, getInstances, getBackupStorages } from '@/lib/api';
-import type { PbsStatus, Datastore, BackupGroup, BackupJob, Instance } from '@/lib/types';
+import { getPbsStatus, getBackups, getBackupJobs, createBackup, getInstances, getBackupStorages } from '@/lib/api';
+import type { PbsStatus, BackupGroup, BackupJob, Instance } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -100,21 +100,36 @@ function StatusCard({ status }: { status: PbsStatus }) {
     );
 }
 
-function DatastoreCard({ datastore }: { datastore: Datastore }) {
+interface BackupStorage {
+    storage: string;
+    type: string;
+    content: string;
+    datastore?: string;
+}
+
+function StorageCard({ storage }: { storage: BackupStorage }) {
+    const isPbs = storage.type === 'pbs';
+    
     return (
         <Card className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-700/50 relative overflow-hidden hover:scale-[1.02] transition-transform">
-            <div className="absolute top-0 right-0 w-24 h-24 rounded-full blur-3xl opacity-20 bg-cyan-500" />
+            <div className={cn(
+                "absolute top-0 right-0 w-24 h-24 rounded-full blur-3xl opacity-20",
+                isPbs ? "bg-cyan-500" : "bg-violet-500"
+            )} />
             <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                     <div>
-                        <p className="text-sm text-slate-400 mb-1">Datastore</p>
-                        <p className="text-lg font-semibold text-white">{datastore.name}</p>
-                        {datastore.comment && (
-                            <p className="text-xs text-slate-500 mt-1">{datastore.comment}</p>
-                        )}
+                        <p className="text-sm text-slate-400 mb-1">Stockage backup</p>
+                        <p className="text-lg font-semibold text-white">{storage.storage}</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                            {isPbs ? `PBS: ${storage.datastore || 'N/A'}` : storage.type}
+                        </p>
                     </div>
-                    <div className="p-3 rounded-xl bg-cyan-500/10">
-                        <HardDrive className="h-6 w-6 text-cyan-400" />
+                    <div className={cn(
+                        "p-3 rounded-xl",
+                        isPbs ? "bg-cyan-500/10" : "bg-violet-500/10"
+                    )}>
+                        <HardDrive className={cn("h-6 w-6", isPbs ? "text-cyan-400" : "text-violet-400")} />
                     </div>
                 </div>
             </CardContent>
@@ -124,11 +139,11 @@ function DatastoreCard({ datastore }: { datastore: Datastore }) {
 
 function BackupRow({
     backup,
-    datastore,
+    storage,
     onDelete
 }: {
     backup: BackupGroup;
-    datastore: string;
+    storage: string;
     onDelete: () => void;
 }) {
     const isVM = backup['backup-type'] === 'vm';
@@ -151,7 +166,7 @@ function BackupRow({
             </td>
             <td className="px-4 py-3">
                 <Badge variant="outline" className="bg-slate-700/50 text-slate-300 border-slate-600">
-                    {datastore}
+                    {storage}
                 </Badge>
             </td>
             <td className="px-4 py-3">
@@ -191,13 +206,13 @@ function BackupRow({
 
 function CreateBackupModal({
     instances,
-    datastores,
+    backupStorages,
     isOpen,
     onClose,
     onSubmit,
 }: {
     instances: Instance[];
-    datastores: Datastore[];
+    backupStorages: BackupStorage[];
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (vmid: number, node: string, type: 'qemu' | 'lxc', storage: string) => void;
@@ -241,12 +256,12 @@ function CreateBackupModal({
                         <label className="text-sm text-slate-400 block mb-2">Stockage de destination</label>
                         <Select value={selectedStorage} onValueChange={setSelectedStorage}>
                             <SelectTrigger className="bg-slate-800 border-slate-700">
-                                <SelectValue placeholder="Sélectionner un datastore" />
+                                <SelectValue placeholder="Sélectionner un stockage" />
                             </SelectTrigger>
                             <SelectContent className="bg-slate-800 border-slate-700">
-                                {datastores.map((ds) => (
-                                    <SelectItem key={ds.name} value={ds.name}>
-                                        {ds.name}
+                                {backupStorages.map((s) => (
+                                    <SelectItem key={s.storage} value={s.storage}>
+                                        {s.storage} ({s.type})
                                     </SelectItem>
                                 ))}
                             </SelectContent>
@@ -274,7 +289,7 @@ function CreateBackupModal({
 
 export default function BackupsPage() {
     const queryClient = useQueryClient();
-    const [selectedDatastore, setSelectedDatastore] = useState<string>('');
+    const [selectedStorage, setSelectedStorage] = useState<string>('');
     const [showCreateModal, setShowCreateModal] = useState(false);
 
     const { data: pbsStatus } = useQuery({
@@ -282,30 +297,20 @@ export default function BackupsPage() {
         queryFn: getPbsStatus,
     });
 
-    const { data: pbsDatastores = [] } = useQuery({
-        queryKey: ['pbs-datastores'],
-        queryFn: getDatastores,
-    });
-
-    // Get PVE backup storages (these are the actual vzdump destinations)
-    const { data: pveBackupStorages = [] } = useQuery({
-        queryKey: ['pve-backup-storages'],
+    // Get PVE backup storages (storages with content type 'backup')
+    const { data: backupStorages = [] } = useQuery({
+        queryKey: ['backup-storages'],
         queryFn: getBackupStorages,
     });
 
-    // Combine datastores: prefer PVE storages, fallback to PBS datastores
-    // Convert PVE storages to match Datastore interface
-    const datastores: Datastore[] = pveBackupStorages.length > 0
-        ? pveBackupStorages.map((s: any) => ({
-            name: s.storage,
-            comment: `${s.type} - ${s.content}`,
-        }))
-        : pbsDatastores;
+    // Get PBS datastore name from selected storage (for PBS type storages)
+    const selectedStorageData = backupStorages.find((s: BackupStorage) => s.storage === selectedStorage);
+    const pbsDatastore = selectedStorageData?.type === 'pbs' ? selectedStorageData.datastore : null;
 
     const { data: backups = [], isLoading: backupsLoading } = useQuery({
-        queryKey: ['backups', selectedDatastore],
-        queryFn: () => selectedDatastore ? getBackups(selectedDatastore) : Promise.resolve([]),
-        enabled: !!selectedDatastore,
+        queryKey: ['backups', pbsDatastore],
+        queryFn: () => pbsDatastore ? getBackups(pbsDatastore) : Promise.resolve([]),
+        enabled: !!pbsDatastore,
     });
 
     const { data: backupJobs = [] } = useQuery({
@@ -330,12 +335,12 @@ export default function BackupsPage() {
         createBackupMutation.mutate({ vmid, node, type, storage });
     };
 
-    // Auto-select first datastore using useEffect to avoid infinite re-render
+    // Auto-select first storage
     useEffect(() => {
-        if (datastores.length > 0 && !selectedDatastore) {
-            setSelectedDatastore(datastores[0].name);
+        if (backupStorages.length > 0 && !selectedStorage) {
+            setSelectedStorage(backupStorages[0].storage);
         }
-    }, [datastores, selectedDatastore]);
+    }, [backupStorages, selectedStorage]);
 
     return (
         <div className="space-y-6">
@@ -343,13 +348,13 @@ export default function BackupsPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-white">Sauvegardes</h1>
-                    <p className="text-slate-400 mt-1">Gérez vos sauvegardes Proxmox Backup Server</p>
+                    <p className="text-slate-400 mt-1">Gérez vos sauvegardes de machines virtuelles</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <Button
                         onClick={() => setShowCreateModal(true)}
                         className="bg-cyan-600 hover:bg-cyan-500 text-white"
-                        disabled={datastores.length === 0}
+                        disabled={backupStorages.length === 0}
                     >
                         <Play className="mr-2 h-4 w-4" />
                         Nouvelle sauvegarde
@@ -357,11 +362,11 @@ export default function BackupsPage() {
                 </div>
             </div>
 
-            {/* Status + Datastores */}
+            {/* Status + Storages */}
             <div className="grid gap-4 md:grid-cols-3">
                 {pbsStatus && <StatusCard status={pbsStatus} />}
-                {datastores.slice(0, 2).map((ds) => (
-                    <DatastoreCard key={ds.name} datastore={ds} />
+                {backupStorages.slice(0, 2).map((s: BackupStorage) => (
+                    <StorageCard key={s.storage} storage={s} />
                 ))}
             </div>
 
@@ -393,26 +398,34 @@ export default function BackupsPage() {
                 </Card>
             )}
 
-            {/* Datastore Selector + Backups Table */}
+            {/* Storage Selector + Backups Table */}
             <Card className="bg-slate-800/30 border-slate-700/30">
                 <CardHeader className="flex flex-row items-center justify-between pb-3">
                     <CardTitle className="text-lg">Sauvegardes</CardTitle>
-                    <Select value={selectedDatastore} onValueChange={setSelectedDatastore}>
+                    <Select value={selectedStorage} onValueChange={setSelectedStorage}>
                         <SelectTrigger className="w-48 bg-slate-800 border-slate-700">
-                            <SelectValue placeholder="Datastore" />
+                            <SelectValue placeholder="Stockage" />
                         </SelectTrigger>
                         <SelectContent className="bg-slate-800 border-slate-700">
-                            {datastores.map((ds) => (
-                                <SelectItem key={ds.name} value={ds.name}>{ds.name}</SelectItem>
+                            {backupStorages.map((s: BackupStorage) => (
+                                <SelectItem key={s.storage} value={s.storage}>
+                                    {s.storage} ({s.type})
+                                </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
                 </CardHeader>
                 <CardContent className="p-0">
-                    {!selectedDatastore ? (
+                    {!selectedStorage ? (
                         <div className="p-8 text-center text-slate-500">
                             <Database className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                            <p>Sélectionnez un datastore pour voir les sauvegardes</p>
+                            <p>Sélectionnez un stockage pour voir les sauvegardes</p>
+                        </div>
+                    ) : !pbsDatastore ? (
+                        <div className="p-8 text-center text-slate-500">
+                            <HardDrive className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                            <p>Ce stockage ({selectedStorageData?.type}) ne supporte pas la visualisation des backups</p>
+                            <p className="text-xs mt-2">Seuls les stockages PBS permettent de lister les sauvegardes</p>
                         </div>
                     ) : backupsLoading ? (
                         <div className="p-8 text-center text-slate-500">
@@ -422,14 +435,14 @@ export default function BackupsPage() {
                     ) : backups.length === 0 ? (
                         <div className="p-8 text-center text-slate-500">
                             <Archive className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                            <p>Aucune sauvegarde dans ce datastore</p>
+                            <p>Aucune sauvegarde dans ce stockage</p>
                         </div>
                     ) : (
                         <table className="w-full">
                             <thead>
                                 <tr className="border-b border-slate-700/50">
                                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Instance</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Datastore</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Stockage</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Dernière sauvegarde</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Snapshots</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase w-16"></th>
@@ -440,7 +453,7 @@ export default function BackupsPage() {
                                     <BackupRow
                                         key={`${backup['backup-type']}/${backup['backup-id']}`}
                                         backup={backup}
-                                        datastore={selectedDatastore}
+                                        storage={selectedStorage}
                                         onDelete={() => {
                                             if (confirm('Supprimer cette sauvegarde ?')) {
                                                 // Would need snapshot time - simplified for now
@@ -457,7 +470,7 @@ export default function BackupsPage() {
             {/* Create Backup Modal */}
             <CreateBackupModal
                 instances={instances}
-                datastores={datastores}
+                backupStorages={backupStorages}
                 isOpen={showCreateModal}
                 onClose={() => setShowCreateModal(false)}
                 onSubmit={handleCreateBackup}
