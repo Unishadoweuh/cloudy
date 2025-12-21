@@ -14,6 +14,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { PbsModule } from './pbs/pbs.module';
 import { VncModule } from './vnc/vnc.module';
 import { BillingModule } from './billing/billing.module';
+import { AuditModule } from './audit/audit.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { BillingModule } from './billing/billing.module';
     PbsModule,
     VncModule,
     BillingModule,
+    AuditModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, Request, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, Request, BadRequestException, ForbiddenException, Headers } from '@nestjs/common';
 import { ProxmoxService } from '../proxmox/proxmox.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BillingService } from '../billing/billing.service';
+import { AuditService } from '../audit/audit.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { BillingMode } from '@prisma/client';
+import { BillingMode, AuditAction, AuditCategory } from '@prisma/client';
 
 @Controller('compute')
 @UseGuards(JwtAuthGuard)
@@ -11,7 +12,8 @@ export class ComputeController {
     constructor(
         private readonly proxmoxService: ProxmoxService,
         private readonly notificationsService: NotificationsService,
-        private readonly billingService: BillingService
+        private readonly billingService: BillingService,
+        private readonly auditService: AuditService
     ) { }
 
     @Get('instances')
@@ -34,23 +36,66 @@ export class ComputeController {
         @Body('action') action: string,
         @Query('node') node: string,
         @Query('type') type: 'qemu' | 'lxc',
-        @Request() req: any
+        @Request() req: any,
+        @Headers('x-forwarded-for') forwardedFor?: string,
+        @Headers('user-agent') userAgent?: string
     ) {
         // Extract numeric ID if format is "qemu/100" or "lxc/100"
         const vmid = parseInt(id.replace(/\D/g, ''), 10);
         // Detect type from ID format if not provided
         const instanceType = type || (id.startsWith('lxc') ? 'lxc' : 'qemu');
+        const ipAddress = forwardedFor || req.ip;
 
-        const result = await this.proxmoxService.vmAction(node, vmid, action, instanceType);
+        // Map action to AuditAction
+        const auditActionMap: Record<string, AuditAction> = {
+            'start': AuditAction.START_VM,
+            'stop': AuditAction.STOP_VM,
+            'restart': AuditAction.RESTART_VM,
+            'shutdown': AuditAction.SHUTDOWN_VM,
+        };
 
-        await this.notificationsService.create(
-            req.user.id,
-            'Instance Action',
-            `Triggered ${action} on ${instanceType} ${vmid}. Task: ${result}`,
-            'info'
-        );
+        try {
+            const result = await this.proxmoxService.vmAction(node, vmid, action, instanceType);
 
-        return result;
+            await this.notificationsService.create(
+                req.user.id,
+                'Instance Action',
+                `Triggered ${action} on ${instanceType} ${vmid}. Task: ${result}`,
+                'info'
+            );
+
+            // Audit log
+            await this.auditService.log({
+                action: auditActionMap[action] || AuditAction.START_VM,
+                category: AuditCategory.COMPUTE,
+                userId: req.user.id,
+                username: req.user.username,
+                targetId: vmid.toString(),
+                targetName: `${instanceType}/${vmid}`,
+                targetType: instanceType,
+                details: { node, action, task: result },
+                ipAddress,
+                userAgent,
+            });
+
+            return result;
+        } catch (error) {
+            await this.auditService.logError(
+                auditActionMap[action] || AuditAction.START_VM,
+                AuditCategory.COMPUTE,
+                error.message,
+                {
+                    userId: req.user.id,
+                    username: req.user.username,
+                    targetId: vmid.toString(),
+                    targetType: instanceType,
+                    details: { node, action },
+                    ipAddress,
+                    userAgent,
+                }
+            );
+            throw error;
+        }
     }
 
     @Get('instances/:id/vnc')
@@ -71,8 +116,14 @@ export class ComputeController {
     }
 
     @Post('instances')
-    async createInstance(@Body() body: any, @Request() req: any) {
+    async createInstance(
+        @Body() body: any,
+        @Request() req: any,
+        @Headers('x-forwarded-for') forwardedFor?: string,
+        @Headers('user-agent') userAgent?: string
+    ) {
         const user = req.user;
+        const ipAddress = forwardedFor || req.ip;
 
         // 1. Check Allowed Nodes
         if (user.allowedNodes && user.allowedNodes.length > 0 && !user.allowedNodes.includes(body.node)) {
@@ -109,53 +160,92 @@ export class ComputeController {
             );
         }
 
-        let result;
-        const tag = `owner-${user.id}`;
-
-        // Simple DTO validation could be added here
-        if (body.type === 'lxc') {
-            result = await this.proxmoxService.createLXC(body.node, body.templateId, body.name, body.cores, body.memory, body.password, body.sshkeys, tag);
-        } else {
-            // Default to QEMU
-            result = await this.proxmoxService.createQemu(body.node, body.templateId, body.name, body.cores, body.memory, body.ciuser, body.cipassword, body.sshkeys, tag);
-        }
-
-        await this.notificationsService.create(
-            req.user.id,
-            'Instance Created',
-            `Created ${body.type} instance "${body.name}". Task: ${result.task}`,
-            'success'
-        );
-
-        // 4. Start usage tracking
         try {
-            await this.billingService.startUsageTracking(
-                user.id,
-                result.vmid,
-                body.node,
-                body.type || 'qemu',
-                body.name,
-                requestedCores,
-                requestedMemory,
-                requestedDisk,
-                billingMode
+            let result;
+            const tag = `owner-${user.id}`;
+
+            // Simple DTO validation could be added here
+            if (body.type === 'lxc') {
+                result = await this.proxmoxService.createLXC(body.node, body.templateId, body.name, body.cores, body.memory, body.password, body.sshkeys, tag);
+            } else {
+                // Default to QEMU
+                result = await this.proxmoxService.createQemu(body.node, body.templateId, body.name, body.cores, body.memory, body.ciuser, body.cipassword, body.sshkeys, tag);
+            }
+
+            await this.notificationsService.create(
+                req.user.id,
+                'Instance Created',
+                `Created ${body.type} instance "${body.name}". Task: ${result.task}`,
+                'success'
             );
 
-            // Deduct initial credit for reserved instances
-            if (billingMode === 'RESERVED') {
-                await this.billingService.deductCredits(
+            // 4. Start usage tracking
+            try {
+                await this.billingService.startUsageTracking(
                     user.id,
-                    estimate.monthly.total,
-                    `Monthly reservation: ${body.name}`,
-                    { vmid: result.vmid, billingMode }
+                    result.vmid,
+                    body.node,
+                    body.type || 'qemu',
+                    body.name,
+                    requestedCores,
+                    requestedMemory,
+                    requestedDisk,
+                    billingMode
                 );
-            }
-        } catch (err) {
-            // Log but don't fail the instance creation
-            console.error('Failed to start billing tracking:', err.message);
-        }
 
-        return result;
+                // Deduct initial credit for reserved instances
+                if (billingMode === 'RESERVED') {
+                    await this.billingService.deductCredits(
+                        user.id,
+                        estimate.monthly.total,
+                        `Monthly reservation: ${body.name}`,
+                        { vmid: result.vmid, billingMode }
+                    );
+                }
+            } catch (err) {
+                // Log but don't fail the instance creation
+                console.error('Failed to start billing tracking:', err.message);
+            }
+
+            // Audit log
+            await this.auditService.log({
+                action: AuditAction.CREATE_INSTANCE,
+                category: AuditCategory.COMPUTE,
+                userId: user.id,
+                username: user.username,
+                targetId: result.vmid.toString(),
+                targetName: body.name,
+                targetType: body.type || 'qemu',
+                details: {
+                    node: body.node,
+                    cores: requestedCores,
+                    memory: requestedMemory,
+                    disk: requestedDisk,
+                    billingMode,
+                    task: result.task,
+                },
+                ipAddress,
+                userAgent,
+            });
+
+            return result;
+        } catch (error) {
+            await this.auditService.logError(
+                AuditAction.CREATE_INSTANCE,
+                AuditCategory.COMPUTE,
+                error.message,
+                {
+                    userId: user.id,
+                    username: user.username,
+                    targetName: body.name,
+                    targetType: body.type || 'qemu',
+                    details: { node: body.node, cores: requestedCores, memory: requestedMemory },
+                    ipAddress,
+                    userAgent,
+                }
+            );
+            throw error;
+        }
     }
 
     @Delete('instances/:id')
@@ -163,26 +253,61 @@ export class ComputeController {
         @Param('id') id: string,
         @Query('node') node: string,
         @Query('type') type: 'qemu' | 'lxc',
-        @Request() req: any
+        @Request() req: any,
+        @Headers('x-forwarded-for') forwardedFor?: string,
+        @Headers('user-agent') userAgent?: string
     ) {
         const vmid = parseInt(id.replace(/\D/g, ''), 10);
         const instanceType = type || (id.startsWith('lxc') ? 'lxc' : 'qemu');
+        const ipAddress = forwardedFor || req.ip;
 
-        let result;
-        if (instanceType === 'lxc') {
-            result = await this.proxmoxService.deleteLXC(node, vmid);
-        } else {
-            result = await this.proxmoxService.deleteQemu(node, vmid);
+        try {
+            let result;
+            if (instanceType === 'lxc') {
+                result = await this.proxmoxService.deleteLXC(node, vmid);
+            } else {
+                result = await this.proxmoxService.deleteQemu(node, vmid);
+            }
+
+            await this.notificationsService.create(
+                req.user.id,
+                'Instance Deleted',
+                `Deleted ${instanceType} instance ${vmid}. Task: ${result}`,
+                'warning'
+            );
+
+            // Audit log
+            await this.auditService.log({
+                action: AuditAction.DELETE_INSTANCE,
+                category: AuditCategory.COMPUTE,
+                userId: req.user.id,
+                username: req.user.username,
+                targetId: vmid.toString(),
+                targetName: `${instanceType}/${vmid}`,
+                targetType: instanceType,
+                details: { node, task: result },
+                ipAddress,
+                userAgent,
+            });
+
+            return { success: true, task: result };
+        } catch (error) {
+            await this.auditService.logError(
+                AuditAction.DELETE_INSTANCE,
+                AuditCategory.COMPUTE,
+                error.message,
+                {
+                    userId: req.user.id,
+                    username: req.user.username,
+                    targetId: vmid.toString(),
+                    targetType: instanceType,
+                    details: { node },
+                    ipAddress,
+                    userAgent,
+                }
+            );
+            throw error;
         }
-
-        await this.notificationsService.create(
-            req.user.id,
-            'Instance Deleted',
-            `Deleted ${instanceType} instance ${vmid}. Task: ${result}`,
-            'warning'
-        );
-
-        return { success: true, task: result };
     }
 
     // ==================== SNAPSHOT ENDPOINTS ====================
@@ -204,24 +329,59 @@ export class ComputeController {
         @Body() body: { snapname: string; description?: string; vmstate?: boolean },
         @Query('node') node: string,
         @Request() req: any,
-        @Query('type') type?: 'qemu' | 'lxc'
+        @Query('type') type?: 'qemu' | 'lxc',
+        @Headers('x-forwarded-for') forwardedFor?: string,
+        @Headers('user-agent') userAgent?: string
     ) {
         const vmid = parseInt(id.replace(/\D/g, ''), 10);
         const instanceType = type || (id.startsWith('lxc') ? 'lxc' : 'qemu');
+        const ipAddress = forwardedFor || req.ip;
 
-        const result = await this.proxmoxService.createSnapshot(
-            node, vmid, instanceType,
-            body.snapname, body.description, body.vmstate || false
-        );
+        try {
+            const result = await this.proxmoxService.createSnapshot(
+                node, vmid, instanceType,
+                body.snapname, body.description, body.vmstate || false
+            );
 
-        await this.notificationsService.create(
-            req.user.id,
-            'Snapshot Created',
-            `Created snapshot "${body.snapname}" for ${instanceType} ${vmid}`,
-            'success'
-        );
+            await this.notificationsService.create(
+                req.user.id,
+                'Snapshot Created',
+                `Created snapshot "${body.snapname}" for ${instanceType} ${vmid}`,
+                'success'
+            );
 
-        return result;
+            // Audit log
+            await this.auditService.log({
+                action: AuditAction.CREATE_SNAPSHOT,
+                category: AuditCategory.COMPUTE,
+                userId: req.user.id,
+                username: req.user.username,
+                targetId: vmid.toString(),
+                targetName: body.snapname,
+                targetType: instanceType,
+                details: { node, snapname: body.snapname, description: body.description },
+                ipAddress,
+                userAgent,
+            });
+
+            return result;
+        } catch (error) {
+            await this.auditService.logError(
+                AuditAction.CREATE_SNAPSHOT,
+                AuditCategory.COMPUTE,
+                error.message,
+                {
+                    userId: req.user.id,
+                    username: req.user.username,
+                    targetId: vmid.toString(),
+                    targetType: instanceType,
+                    details: { node, snapname: body.snapname },
+                    ipAddress,
+                    userAgent,
+                }
+            );
+            throw error;
+        }
     }
 
     @Delete('instances/:id/snapshots/:snapname')
@@ -230,21 +390,56 @@ export class ComputeController {
         @Param('snapname') snapname: string,
         @Query('node') node: string,
         @Request() req: any,
-        @Query('type') type?: 'qemu' | 'lxc'
+        @Query('type') type?: 'qemu' | 'lxc',
+        @Headers('x-forwarded-for') forwardedFor?: string,
+        @Headers('user-agent') userAgent?: string
     ) {
         const vmid = parseInt(id.replace(/\D/g, ''), 10);
         const instanceType = type || (id.startsWith('lxc') ? 'lxc' : 'qemu');
+        const ipAddress = forwardedFor || req.ip;
 
-        const result = await this.proxmoxService.deleteSnapshot(node, vmid, instanceType, snapname);
+        try {
+            const result = await this.proxmoxService.deleteSnapshot(node, vmid, instanceType, snapname);
 
-        await this.notificationsService.create(
-            req.user.id,
-            'Snapshot Deleted',
-            `Deleted snapshot "${snapname}" from ${instanceType} ${vmid}`,
-            'warning'
-        );
+            await this.notificationsService.create(
+                req.user.id,
+                'Snapshot Deleted',
+                `Deleted snapshot "${snapname}" from ${instanceType} ${vmid}`,
+                'warning'
+            );
 
-        return { success: true, task: result };
+            // Audit log
+            await this.auditService.log({
+                action: AuditAction.DELETE_SNAPSHOT,
+                category: AuditCategory.COMPUTE,
+                userId: req.user.id,
+                username: req.user.username,
+                targetId: vmid.toString(),
+                targetName: snapname,
+                targetType: instanceType,
+                details: { node, snapname, task: result },
+                ipAddress,
+                userAgent,
+            });
+
+            return { success: true, task: result };
+        } catch (error) {
+            await this.auditService.logError(
+                AuditAction.DELETE_SNAPSHOT,
+                AuditCategory.COMPUTE,
+                error.message,
+                {
+                    userId: req.user.id,
+                    username: req.user.username,
+                    targetId: vmid.toString(),
+                    targetType: instanceType,
+                    details: { node, snapname },
+                    ipAddress,
+                    userAgent,
+                }
+            );
+            throw error;
+        }
     }
 
     @Post('instances/:id/snapshots/:snapname/rollback')
@@ -253,21 +448,55 @@ export class ComputeController {
         @Param('snapname') snapname: string,
         @Query('node') node: string,
         @Request() req: any,
-        @Query('type') type?: 'qemu' | 'lxc'
+        @Query('type') type?: 'qemu' | 'lxc',
+        @Headers('x-forwarded-for') forwardedFor?: string,
+        @Headers('user-agent') userAgent?: string
     ) {
         const vmid = parseInt(id.replace(/\D/g, ''), 10);
         const instanceType = type || (id.startsWith('lxc') ? 'lxc' : 'qemu');
+        const ipAddress = forwardedFor || req.ip;
 
-        const result = await this.proxmoxService.rollbackSnapshot(node, vmid, instanceType, snapname);
+        try {
+            const result = await this.proxmoxService.rollbackSnapshot(node, vmid, instanceType, snapname);
 
-        await this.notificationsService.create(
-            req.user.id,
-            'Snapshot Rollback',
-            `Rolled back ${instanceType} ${vmid} to snapshot "${snapname}"`,
-            'info'
-        );
+            await this.notificationsService.create(
+                req.user.id,
+                'Snapshot Rollback',
+                `Rolled back ${instanceType} ${vmid} to snapshot "${snapname}"`,
+                'info'
+            );
 
-        return { success: true, task: result };
+            // Audit log
+            await this.auditService.log({
+                action: AuditAction.ROLLBACK_SNAPSHOT,
+                category: AuditCategory.COMPUTE,
+                userId: req.user.id,
+                username: req.user.username,
+                targetId: vmid.toString(),
+                targetName: snapname,
+                targetType: instanceType,
+                details: { node, snapname, task: result },
+                ipAddress,
+                userAgent,
+            });
+
+            return { success: true, task: result };
+        } catch (error) {
+            await this.auditService.logError(
+                AuditAction.ROLLBACK_SNAPSHOT,
+                AuditCategory.COMPUTE,
+                error.message,
+                {
+                    userId: req.user.id,
+                    username: req.user.username,
+                    targetId: vmid.toString(),
+                    targetType: instanceType,
+                    details: { node, snapname },
+                    ipAddress,
+                    userAgent,
+                }
+            );
+            throw error;
+        }
     }
 }
-

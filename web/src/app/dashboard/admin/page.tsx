@@ -20,6 +20,7 @@ import {
     Euro,
     HardDrive,
     CreditCard,
+    FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -303,6 +304,13 @@ export default function AdminDashboardPage() {
                     icon={Settings}
                     href="/dashboard/settings"
                     iconColor="bg-slate-600"
+                />
+                <AdminCard
+                    title="Logs d'Audit"
+                    description="Historique de toutes les actions de la plateforme"
+                    icon={FileText}
+                    href="/dashboard/admin/logs"
+                    iconColor="bg-indigo-500"
                 />
             </div>
         </div>

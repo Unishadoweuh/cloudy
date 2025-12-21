@@ -53,6 +53,7 @@ model User {
   creditBalance  CreditBalance?
   transactions   Transaction[]
   usageRecords   UsageRecord[]
+  auditLogs      AuditLog[]
 }
 
 model Notification {
@@ -182,4 +183,88 @@ model UsageRecord {
   isActive    Boolean     @default(true)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+}
+
+// ==================== AUDIT LOG MODELS ====================
+
+enum AuditAction {
+  // Compute
+  CREATE_INSTANCE
+  DELETE_INSTANCE
+  START_VM
+  STOP_VM
+  RESTART_VM
+  SHUTDOWN_VM
+  CREATE_SNAPSHOT
+  DELETE_SNAPSHOT
+  ROLLBACK_SNAPSHOT
+  
+  // Billing
+  ADD_CREDITS
+  DEDUCT_CREDITS
+  REFUND_CREDITS
+  
+  // Auth/Users
+  USER_LOGIN
+  USER_LOGOUT
+  UPDATE_USER_ROLE
+  UPDATE_USER_LIMITS
+  DELETE_USER
+  
+  // Backup
+  CREATE_BACKUP
+  DELETE_BACKUP
+  RESTORE_BACKUP
+  
+  // Admin
+  UPDATE_PRICING
+  UPDATE_BILLING_CONFIG
+  SYSTEM_ERROR
+}
+
+enum AuditCategory {
+  COMPUTE
+  BILLING
+  AUTH
+  BACKUP
+  ADMIN
+  SYSTEM
+}
+
+enum AuditStatus {
+  SUCCESS
+  ERROR
+  WARNING
+}
+
+model AuditLog {
+  id          String        @id @default(uuid())
+  action      AuditAction
+  category    AuditCategory
+  status      AuditStatus   @default(SUCCESS)
+  
+  // Actor (who performed the action)
+  userId      String?
+  user        User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  username    String?       // Cached for when user is deleted
+  
+  // Target (what was affected)
+  targetId    String?       // e.g., vmid, userId
+  targetName  String?       // e.g., VM name, username
+  targetType  String?       // e.g., "vm", "lxc", "user"
+  
+  // Details
+  details     Json?         // Additional structured data
+  errorMessage String?      // Error message if status is ERROR
+  
+  // Request info
+  ipAddress   String?
+  userAgent   String?
+  
+  createdAt   DateTime      @default(now())
+
+  @@index([createdAt])
+  @@index([category])
+  @@index([userId])
+  @@index([action])
 }

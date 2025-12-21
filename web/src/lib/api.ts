@@ -870,3 +870,106 @@ export async function getAllBalances(): Promise<Array<CreditBalance & { user: { 
         return handleApiError(error);
     }
 }
+
+// ==================== AUDIT LOG API ====================
+
+export type AuditCategory = 'COMPUTE' | 'BILLING' | 'AUTH' | 'BACKUP' | 'ADMIN' | 'SYSTEM';
+export type AuditAction =
+    | 'CREATE_INSTANCE' | 'DELETE_INSTANCE' | 'START_VM' | 'STOP_VM' | 'RESTART_VM' | 'SHUTDOWN_VM'
+    | 'CREATE_SNAPSHOT' | 'DELETE_SNAPSHOT' | 'ROLLBACK_SNAPSHOT'
+    | 'ADD_CREDITS' | 'DEDUCT_CREDITS' | 'REFUND_CREDITS'
+    | 'USER_LOGIN' | 'USER_LOGOUT' | 'UPDATE_USER_ROLE' | 'UPDATE_USER_LIMITS' | 'DELETE_USER'
+    | 'CREATE_BACKUP' | 'DELETE_BACKUP' | 'RESTORE_BACKUP'
+    | 'UPDATE_PRICING' | 'UPDATE_BILLING_CONFIG' | 'SYSTEM_ERROR';
+export type AuditStatus = 'SUCCESS' | 'ERROR' | 'WARNING';
+
+export interface AuditLog {
+    id: string;
+    action: AuditAction;
+    category: AuditCategory;
+    status: AuditStatus;
+    userId?: string;
+    username?: string;
+    targetId?: string;
+    targetName?: string;
+    targetType?: string;
+    details?: Record<string, any>;
+    errorMessage?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    createdAt: string;
+    user?: {
+        id: string;
+        username: string;
+        avatar?: string;
+    };
+}
+
+export interface AuditLogFilters {
+    category?: AuditCategory;
+    action?: AuditAction;
+    status?: AuditStatus;
+    userId?: string;
+    search?: string;
+    dateFrom?: string;
+    dateTo?: string;
+}
+
+export interface AuditLogsResponse {
+    logs: AuditLog[];
+    pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+    };
+}
+
+export interface AuditStats {
+    totalLogs: number;
+    last24hCount: number;
+    last7dCount: number;
+    errorCount: number;
+    byCategory: Record<string, number>;
+    recentLogs: AuditLog[];
+}
+
+/**
+ * Get audit logs with filters and pagination (admin only)
+ */
+export async function getAuditLogs(
+    filters: AuditLogFilters = {},
+    page = 1,
+    limit = 50
+): Promise<AuditLogsResponse> {
+    try {
+        const params: Record<string, string> = {
+            page: page.toString(),
+            limit: limit.toString(),
+        };
+        if (filters.category) params.category = filters.category;
+        if (filters.action) params.action = filters.action;
+        if (filters.status) params.status = filters.status;
+        if (filters.userId) params.userId = filters.userId;
+        if (filters.search) params.search = filters.search;
+        if (filters.dateFrom) params.dateFrom = filters.dateFrom;
+        if (filters.dateTo) params.dateTo = filters.dateTo;
+
+        const response = await api.get<AuditLogsResponse>('/audit/logs', { params });
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Get audit stats (admin only)
+ */
+export async function getAuditStats(): Promise<AuditStats> {
+    try {
+        const response = await api.get<AuditStats>('/audit/stats');
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
