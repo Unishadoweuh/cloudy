@@ -177,11 +177,14 @@ export class ProxmoxService {
             const newId = await this.getNextId();
 
             // Clone the template
-            await this.client.post(`/api2/json/nodes/${node}/qemu/${templateId}/clone`, {
+            const cloneRes = await this.client.post(`/api2/json/nodes/${node}/qemu/${templateId}/clone`, {
                 newid: newId,
                 name: name,
                 full: 1
             });
+
+            const cloneTask = cloneRes.data?.data;
+            this.logger.log(`Clone task started: ${cloneTask} for VM ${newId}`);
 
             const configPayload: any = {
                 cores: cores,
@@ -192,22 +195,28 @@ export class ProxmoxService {
             if (cipassword) configPayload.cipassword = cipassword;
             if (sshkeys) configPayload.sshkeys = encodeURIComponent(sshkeys);
 
-            try {
-                // Wait a bit or retry? For prototype we just wait 2s
-                await new Promise(r => setTimeout(r, 2000));
-                await this.client.post(`/api2/json/nodes/${node}/qemu/${newId}/config`, configPayload);
-            } catch (e) {
-                this.logger.warn(`Failed to apply config immediately (Clone lock?): ${e.message}`);
-                // Retry once
-                await new Promise(r => setTimeout(r, 2000));
-                await this.client.post(`/api2/json/nodes/${node}/qemu/${newId}/config`, configPayload);
+            // Retry applying config up to 5 times with increasing delays
+            let configApplied = false;
+            const delays = [3000, 5000, 8000, 12000, 15000];
+            for (let i = 0; i < delays.length && !configApplied; i++) {
+                await new Promise(r => setTimeout(r, delays[i]));
+                try {
+                    await this.client.post(`/api2/json/nodes/${node}/qemu/${newId}/config`, configPayload);
+                    configApplied = true;
+                    this.logger.log(`Config applied to VM ${newId} on attempt ${i + 1}`);
+                } catch (e) {
+                    this.logger.warn(`Config apply attempt ${i + 1} failed for VM ${newId}: ${e.message}`);
+                }
             }
 
-            return { vmid: newId, task: "UPID:mock:task:123" };
+            if (!configApplied) {
+                this.logger.error(`Failed to apply config with tags to VM ${newId} after ${delays.length} attempts`);
+            }
+
+            return { vmid: newId, task: cloneTask || "UPID:clone:task" };
         } catch (error) {
-            this.logger.error(`Error creating QEMU VM from template ${templateId}. Returning MOCK Success.`);
-            const mockId = await this.getNextId();
-            return { vmid: mockId, task: "UPID:mock:task:123" };
+            this.logger.error(`Error creating QEMU VM from template ${templateId}: ${error.message}`);
+            throw error;
         }
     }
 
@@ -216,11 +225,14 @@ export class ProxmoxService {
             const newId = await this.getNextId();
 
             // Clone LXC Template
-            await this.client.post(`/api2/json/nodes/${node}/lxc/${templateId}/clone`, {
+            const cloneRes = await this.client.post(`/api2/json/nodes/${node}/lxc/${templateId}/clone`, {
                 newid: newId,
                 hostname: name,
                 full: 1
             });
+
+            const cloneTask = cloneRes.data?.data;
+            this.logger.log(`LXC Clone task started: ${cloneTask} for CT ${newId}`);
 
             // Config Update
             const configPayload: any = {
@@ -231,18 +243,28 @@ export class ProxmoxService {
             if (password) configPayload.password = password;
             if (sshkeys) configPayload['ssh-public-keys'] = encodeURIComponent(sshkeys);
 
-            try {
-                await new Promise(r => setTimeout(r, 2000));
-                await this.client.put(`/api2/json/nodes/${node}/lxc/${newId}/config`, configPayload);
-            } catch (e) {
-                this.logger.warn(`Failed to apply config immediately: ${e.message}`);
+            // Retry applying config up to 5 times with increasing delays
+            let configApplied = false;
+            const delays = [3000, 5000, 8000, 12000, 15000];
+            for (let i = 0; i < delays.length && !configApplied; i++) {
+                await new Promise(r => setTimeout(r, delays[i]));
+                try {
+                    await this.client.put(`/api2/json/nodes/${node}/lxc/${newId}/config`, configPayload);
+                    configApplied = true;
+                    this.logger.log(`Config applied to CT ${newId} on attempt ${i + 1}`);
+                } catch (e) {
+                    this.logger.warn(`Config apply attempt ${i + 1} failed for CT ${newId}: ${e.message}`);
+                }
             }
 
-            return { vmid: newId, task: "UPID:mock:lxc:123" };
+            if (!configApplied) {
+                this.logger.error(`Failed to apply config with tags to CT ${newId} after ${delays.length} attempts`);
+            }
+
+            return { vmid: newId, task: cloneTask || "UPID:lxc:clone:task" };
         } catch (error) {
-            this.logger.error(`Error creating LXC from template ${templateId}. Returning MOCK Success.`);
-            const mockId = await this.getNextId();
-            return { vmid: mockId, task: "UPID:mock:lxc:fallback" };
+            this.logger.error(`Error creating LXC from template ${templateId}: ${error.message}`);
+            throw error;
         }
     }
 
