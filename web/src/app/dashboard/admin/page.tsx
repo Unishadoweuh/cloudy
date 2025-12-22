@@ -206,22 +206,21 @@ export default function AdminDashboardPage() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className={cn(
-                    "bg-slate-800/50 border-slate-700/50",
-                    !billingEnabled && "opacity-50"
-                )}>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <Euro className="h-5 w-5 text-emerald-400" />
-                            <div>
-                                <p className="text-2xl font-bold">
-                                    {billingEnabled ? formatCurrency(totalCredits) : '-'}
-                                </p>
-                                <p className="text-xs text-slate-400">Crédits totaux</p>
+                {billingEnabled && (
+                    <Card className="bg-slate-800/50 border-slate-700/50">
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                                <Euro className="h-5 w-5 text-emerald-400" />
+                                <div>
+                                    <p className="text-2xl font-bold">
+                                        {formatCurrency(totalCredits)}
+                                    </p>
+                                    <p className="text-xs text-slate-400">Crédits totaux</p>
+                                </div>
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                )}
                 <Card className="bg-slate-800/50 border-slate-700/50">
                     <CardContent className="p-4">
                         <div className="flex items-center gap-3">
@@ -248,18 +247,19 @@ export default function AdminDashboardPage() {
 
             {/* Admin Sections */}
             <div className="grid gap-4 md:grid-cols-2">
-                <AdminCard
-                    title="Gestion des Crédits"
-                    description="Allouer ou retirer des crédits aux utilisateurs"
-                    icon={Wallet}
-                    href="/dashboard/admin/billing"
-                    iconColor="bg-emerald-500"
-                    disabled={!billingEnabled}
-                    stats={billingEnabled ? [
-                        { label: 'Utilisateurs', value: userCount },
-                        { label: 'Total', value: formatCurrency(totalCredits) },
-                    ] : undefined}
-                />
+                {billingEnabled && (
+                    <AdminCard
+                        title="Gestion des Crédits"
+                        description="Allouer ou retirer des crédits aux utilisateurs"
+                        icon={Wallet}
+                        href="/dashboard/admin/billing"
+                        iconColor="bg-emerald-500"
+                        stats={[
+                            { label: 'Utilisateurs', value: userCount },
+                            { label: 'Total', value: formatCurrency(totalCredits) },
+                        ]}
+                    />
+                )}
                 <AdminCard
                     title="Gestion des Utilisateurs"
                     description="Gérer les comptes et permissions utilisateurs"
