@@ -97,4 +97,64 @@ export class MailService {
             return false;
         }
     }
+
+    async testConnection(): Promise<{ success: boolean; message: string }> {
+        try {
+            const config = await this.configService.getConfig();
+
+            if (!config.smtpHost || !config.smtpUser || !config.mailFrom) {
+                return {
+                    success: false,
+                    message: 'Configuration SMTP incomplète. Vérifiez le serveur, l\'utilisateur et l\'adresse d\'envoi.'
+                };
+            }
+
+            const transporter = await this.getTransporter();
+            if (!transporter) {
+                return { success: false, message: 'Impossible de créer le transporteur mail' };
+            }
+
+            // Verify connection
+            await transporter.verify();
+            this.logger.log('SMTP connection verified successfully');
+            return { success: true, message: 'Connexion SMTP réussie !' };
+        } catch (error) {
+            this.logger.error(`SMTP connection test failed: ${error.message}`);
+            return { success: false, message: `Échec de connexion: ${error.message}` };
+        }
+    }
+
+    async sendTestEmail(toEmail: string): Promise<{ success: boolean; message: string }> {
+        try {
+            const transporter = await this.getTransporter();
+            if (!transporter) {
+                return { success: false, message: 'SMTP non configuré' };
+            }
+
+            const config = await this.configService.getConfig();
+
+            await transporter.sendMail({
+                from: config.mailFrom!,
+                to: toEmail,
+                subject: '✅ Test Email - Uni-Cloud',
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                        <h2 style="color: #06b6d4;">🎉 Configuration Email Réussie !</h2>
+                        <p>Cet email confirme que votre configuration SMTP fonctionne correctement.</p>
+                        <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                            <p style="margin: 0; color: #475569;"><strong>Serveur:</strong> ${config.smtpHost}</p>
+                            <p style="margin: 5px 0 0 0; color: #475569;"><strong>Port:</strong> ${config.smtpPort}</p>
+                        </div>
+                        <p style="color: #666; font-size: 12px;">Envoyé depuis Uni-Cloud Admin Panel</p>
+                    </div>
+                `,
+            });
+
+            this.logger.log(`Test email sent to ${toEmail}`);
+            return { success: true, message: `Email de test envoyé à ${toEmail}` };
+        } catch (error) {
+            this.logger.error(`Failed to send test email: ${error.message}`);
+            return { success: false, message: `Échec d'envoi: ${error.message}` };
+        }
+    }
 }

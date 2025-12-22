@@ -1111,3 +1111,27 @@ export async function changePassword(currentPassword: string, newPassword: strin
         return handleApiError(error);
     }
 }
+
+/**
+ * Test SMTP connection (admin only)
+ */
+export async function testMailConnection(): Promise<{ success: boolean; message: string }> {
+    try {
+        const response = await api.post<{ success: boolean; message: string }>('/config/test-mail');
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Send test email (admin only)
+ */
+export async function sendTestEmail(email: string): Promise<{ success: boolean; message: string }> {
+    try {
+        const response = await api.post<{ success: boolean; message: string }>('/config/send-test-mail', { email });
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}

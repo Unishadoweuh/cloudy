@@ -1,5 +1,6 @@
-import { Controller, Get, Patch, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, UseGuards } from '@nestjs/common';
 import { AppConfigService } from './app-config.service';
+import { MailService } from '../mail/mail.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
 
@@ -17,7 +18,10 @@ class UpdateConfigDto {
 
 @Controller('config')
 export class AppConfigController {
-    constructor(private readonly configService: AppConfigService) { }
+    constructor(
+        private readonly configService: AppConfigService,
+        private readonly mailService: MailService,
+    ) { }
 
     // Public endpoint - returns only auth method flags
     @Get('auth')
@@ -48,5 +52,22 @@ export class AppConfigController {
             }
         }
         return this.configService.updateConfig(updateData);
+    }
+
+    // Test SMTP connection
+    @Post('test-mail')
+    @UseGuards(JwtAuthGuard, AdminGuard)
+    async testMailConnection() {
+        return this.mailService.testConnection();
+    }
+
+    // Send test email
+    @Post('send-test-mail')
+    @UseGuards(JwtAuthGuard, AdminGuard)
+    async sendTestMail(@Body() body: { email: string }) {
+        if (!body.email) {
+            return { success: false, message: 'Email requis' };
+        }
+        return this.mailService.sendTestEmail(body.email);
     }
 }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMe, getAppConfig, updateAppConfig } from '@/lib/api';
+import { getMe, getAppConfig, updateAppConfig, testMailConnection, sendTestEmail } from '@/lib/api';
 import type { AppConfigFull } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,8 @@ import {
     AlertCircle,
     Key,
     Server,
+    Send,
+    Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -29,6 +31,8 @@ export default function AdminSettingsPage() {
     const queryClient = useQueryClient();
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
+    const [testEmail, setTestEmail] = useState('');
+    const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
     // Check if user is admin
     const { data: currentUser, isLoading: userLoading } = useQuery({
@@ -75,6 +79,28 @@ export default function AdminSettingsPage() {
         },
     });
 
+    const testConnectionMutation = useMutation({
+        mutationFn: testMailConnection,
+        onSuccess: (result) => {
+            setTestResult(result);
+            setTimeout(() => setTestResult(null), 5000);
+        },
+        onError: (err: Error) => {
+            setTestResult({ success: false, message: err.message });
+        },
+    });
+
+    const sendTestMutation = useMutation({
+        mutationFn: (email: string) => sendTestEmail(email),
+        onSuccess: (result) => {
+            setTestResult(result);
+            setTimeout(() => setTestResult(null), 5000);
+        },
+        onError: (err: Error) => {
+            setTestResult({ success: false, message: err.message });
+        },
+    });
+
     const handleSave = () => {
         if (!formData) return;
 
@@ -85,6 +111,20 @@ export default function AdminSettingsPage() {
         }
 
         updateMutation.mutate(data);
+    };
+
+    const handleTestConnection = () => {
+        setTestResult(null);
+        testConnectionMutation.mutate();
+    };
+
+    const handleSendTestEmail = () => {
+        if (!testEmail) {
+            setTestResult({ success: false, message: 'Veuillez entrer une adresse email' });
+            return;
+        }
+        setTestResult(null);
+        sendTestMutation.mutate(testEmail);
     };
 
     if (userLoading || configLoading) {
@@ -103,6 +143,8 @@ export default function AdminSettingsPage() {
     if (!formData) {
         return null;
     }
+
+    const isTestingMail = testConnectionMutation.isPending || sendTestMutation.isPending;
 
     return (
         <div className="space-y-6">
@@ -320,6 +362,78 @@ export default function AdminSettingsPage() {
                                         setFormData({ ...formData, smtpSecure: checked })
                                     }
                                 />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Test Mail Card */}
+                    <Card className="bg-slate-800/50 border-slate-700/50">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Zap className="h-5 w-5 text-amber-400" />
+                                Tester la configuration
+                            </CardTitle>
+                            <CardDescription>
+                                Vérifiez que votre configuration SMTP fonctionne correctement
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {/* Test Result */}
+                            {testResult && (
+                                <div className={`flex items-center gap-2 p-3 rounded-lg ${
+                                    testResult.success 
+                                        ? 'bg-green-500/10 border border-green-500/20 text-green-400'
+                                        : 'bg-red-500/10 border border-red-500/20 text-red-400'
+                                }`}>
+                                    {testResult.success ? (
+                                        <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                                    ) : (
+                                        <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                                    )}
+                                    {testResult.message}
+                                </div>
+                            )}
+
+                            <div className="flex gap-3">
+                                <Button
+                                    onClick={handleTestConnection}
+                                    disabled={isTestingMail}
+                                    variant="outline"
+                                    className="border-slate-600 hover:bg-slate-700"
+                                >
+                                    {testConnectionMutation.isPending ? (
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    ) : (
+                                        <Zap className="h-4 w-4 mr-2" />
+                                    )}
+                                    Tester la connexion
+                                </Button>
+                            </div>
+
+                            <div className="border-t border-slate-700 pt-4">
+                                <p className="text-sm text-slate-400 mb-3">
+                                    Envoyer un email de test pour vérifier la délivrabilité
+                                </p>
+                                <div className="flex gap-3">
+                                    <Input
+                                        value={testEmail}
+                                        onChange={(e) => setTestEmail(e.target.value)}
+                                        placeholder="test@example.com"
+                                        className="bg-slate-700/50 border-slate-600 max-w-xs"
+                                    />
+                                    <Button
+                                        onClick={handleSendTestEmail}
+                                        disabled={isTestingMail || !testEmail}
+                                        className="bg-cyan-600 hover:bg-cyan-700"
+                                    >
+                                        {sendTestMutation.isPending ? (
+                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                        ) : (
+                                            <Send className="h-4 w-4 mr-2" />
+                                        )}
+                                        Envoyer test
+                                    </Button>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
