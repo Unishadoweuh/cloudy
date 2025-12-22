@@ -119,7 +119,7 @@ export function SnapshotsTab({ vmid, node, type, isRunning }: SnapshotsTabProps)
             <div className="flex items-center justify-between">
                 <div>
                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                        <Camera className="h-5 w-5 text-violet-400" />
+                        <Camera className="h-5 w-5 text-cyan-400" />
                         Snapshots
                     </h3>
                     <p className="text-sm text-slate-400">
@@ -128,7 +128,7 @@ export function SnapshotsTab({ vmid, node, type, isRunning }: SnapshotsTabProps)
                 </div>
                 <Button
                     onClick={() => setShowCreateForm(!showCreateForm)}
-                    className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
+                    className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
                     disabled={isPending}
                 >
                     <Plus className="h-4 w-4 mr-2" />
@@ -186,7 +186,7 @@ export function SnapshotsTab({ vmid, node, type, isRunning }: SnapshotsTabProps)
                             <Button
                                 onClick={handleCreate}
                                 disabled={createMutation.isPending}
-                                className="bg-gradient-to-r from-violet-500 to-purple-500"
+                                className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
                             >
                                 {createMutation.isPending ? (
                                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -239,8 +239,8 @@ export function SnapshotsTab({ vmid, node, type, isRunning }: SnapshotsTabProps)
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-4">
-                                        <div className="p-3 rounded-xl bg-violet-500/20">
-                                            <Camera className="h-5 w-5 text-violet-400" />
+                                        <div className="p-3 rounded-xl bg-cyan-500/20">
+                                            <Camera className="h-5 w-5 text-cyan-400" />
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-2">
