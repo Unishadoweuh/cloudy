@@ -27,7 +27,7 @@
     },
     "dashboard": {
         "title": "Dashboard",
-        "welcome": "Welcome to Uni-Cloud",
+        "welcome": "Welcome to Cloudy",
         "quickStats": "Quick Stats",
         "quickActions": "Quick Actions",
         "systemOnline": "System Online",
@@ -63,7 +63,7 @@
     },
     "settings": {
         "title": "Settings",
-        "subtitle": "Customize your Uni-Cloud experience",
+        "subtitle": "Customize your Cloudy experience",
         "language": "Language",
         "languageDesc": "Choose your preferred language",
         "theme": "Theme",

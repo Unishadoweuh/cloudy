@@ -119,7 +119,7 @@ function AuthContent() {
                             <Cloud className="h-10 w-10 text-primary" />
                         </div>
                     </div>
-                    <CardTitle className="text-2xl font-bold text-white">Uni-Cloud</CardTitle>
+                    <CardTitle className="text-2xl font-bold text-white">Cloudy</CardTitle>
                     <CardDescription className="text-slate-400">
                         Connectez-vous pour accéder à votre infrastructure
                     </CardDescription>

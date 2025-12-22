@@ -259,7 +259,7 @@ export default function SettingsPage() {
 
             {/* Info */}
             <div className="text-center text-sm text-slate-600">
-                Uni-Cloud v0.3.0 • Proxmox Dashboard
+                Cloudy v0.3.0 • Proxmox Dashboard
             </div>
         </div>
     );

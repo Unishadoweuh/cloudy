@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Cloud Proxmox",
+  title: "Cloudy",
   description: "Modern IaaS Dashboard",
 };
 

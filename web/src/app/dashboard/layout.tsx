@@ -143,7 +143,7 @@ export default function DashboardLayout({
                         <Zap className="h-5 w-5 text-cyan-400" />
                     </div>
                     <div>
-                        <h1 className="text-lg font-bold text-white">Uni-Cloud</h1>
+                        <h1 className="text-lg font-bold text-white">Cloudy</h1>
                         <p className="text-xs text-slate-500">Proxmox Dashboard</p>
                     </div>
                 </Link>
@@ -316,7 +316,7 @@ export default function DashboardLayout({
                         </button>
                         <Link href="/dashboard" className="flex items-center gap-2">
                             <Zap className="h-5 w-5 text-cyan-400" />
-                            <span className="font-bold text-white">Uni-Cloud</span>
+                            <span className="font-bold text-white">Cloudy</span>
                         </Link>
                         <div className="flex items-center gap-2">
                             <GlobalSearch />

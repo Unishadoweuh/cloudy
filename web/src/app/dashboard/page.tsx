@@ -128,7 +128,7 @@ export default function DashboardPage() {
             <div>
                 <div className="flex items-center gap-3 mb-2">
                     <h1 className="text-4xl font-bold text-white">
-                        Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-violet-400">Uni-Cloud</span>
+                        Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-violet-400">Cloudy</span>
                     </h1>
                 </div>
                 <p className="text-slate-400">

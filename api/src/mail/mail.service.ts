@@ -38,10 +38,10 @@ export class MailService {
             await transporter.sendMail({
                 from: config.mailFrom!,
                 to: email,
-                subject: 'Vérifiez votre adresse email - Uni-Cloud',
+                subject: 'Vérifiez votre adresse email - Cloudy',
                 html: `
                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #6366f1;">Bienvenue sur Uni-Cloud, ${username} !</h2>
+                        <h2 style="color: #6366f1;">Bienvenue sur Cloudy, ${username} !</h2>
                         <p>Merci de vous être inscrit. Veuillez cliquer sur le bouton ci-dessous pour vérifier votre adresse email :</p>
                         <div style="text-align: center; margin: 30px 0;">
                             <a href="${verifyUrl}" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">
@@ -73,7 +73,7 @@ export class MailService {
             await transporter.sendMail({
                 from: config.mailFrom!,
                 to: email,
-                subject: 'Réinitialisation de mot de passe - Uni-Cloud',
+                subject: 'Réinitialisation de mot de passe - Cloudy',
                 html: `
                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                         <h2 style="color: #6366f1;">Réinitialisation de mot de passe</h2>
@@ -136,7 +136,7 @@ export class MailService {
             await transporter.sendMail({
                 from: config.mailFrom!,
                 to: toEmail,
-                subject: '✅ Test Email - Uni-Cloud',
+                subject: '✅ Test Email - Cloudy',
                 html: `
                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                         <h2 style="color: #06b6d4;">🎉 Configuration Email Réussie !</h2>
@@ -145,7 +145,7 @@ export class MailService {
                             <p style="margin: 0; color: #475569;"><strong>Serveur:</strong> ${config.smtpHost}</p>
                             <p style="margin: 5px 0 0 0; color: #475569;"><strong>Port:</strong> ${config.smtpPort}</p>
                         </div>
-                        <p style="color: #666; font-size: 12px;">Envoyé depuis Uni-Cloud Admin Panel</p>
+                        <p style="color: #666; font-size: 12px;">Envoyé depuis Cloudy Admin Panel</p>
                     </div>
                 `,
             });

@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/cloud.svg" width="80" height="80" alt="UniCloud Logo"/>
+  <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/cloud.svg" width="80" height="80" alt="Cloudy Logo"/>
 </p>
 
-<h1 align="center">UniCloud</h1>
+<h1 align="center">Cloudy</h1>
 
 <p align="center">
   <strong>Modern Proxmox VE Dashboard</strong><br/>

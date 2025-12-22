@@ -35,7 +35,7 @@ const translations = {
         },
         dashboard: {
             title: "Dashboard",
-            welcome: "Welcome to Uni-Cloud",
+            welcome: "Welcome to Cloudy",
             quickStats: "Quick Stats",
             quickActions: "Quick Actions",
             systemOnline: "System Online",
@@ -104,7 +104,7 @@ const translations = {
         },
         settings: {
             title: "Settings",
-            subtitle: "Customize your Uni-Cloud experience",
+            subtitle: "Customize your Cloudy experience",
             language: "Language",
             languageDesc: "Choose your preferred language",
             theme: "Theme",
@@ -170,7 +170,7 @@ const translations = {
         },
         dashboard: {
             title: "Tableau de bord",
-            welcome: "Bienvenue sur Uni-Cloud",
+            welcome: "Bienvenue sur Cloudy",
             quickStats: "Statistiques rapides",
             quickActions: "Actions rapides",
             systemOnline: "Système en ligne",
@@ -239,7 +239,7 @@ const translations = {
         },
         settings: {
             title: "Paramètres",
-            subtitle: "Personnalisez votre expérience Uni-Cloud",
+            subtitle: "Personnalisez votre expérience Cloudy",
             language: "Langue",
             languageDesc: "Choisissez votre langue préférée",
             theme: "Thème",

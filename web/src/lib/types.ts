@@ -1,4 +1,4 @@
-// API Types for Cloud Proxmox Dashboard
+// API Types for Cloudy Dashboard
 
 export interface Instance {
     id: string;
