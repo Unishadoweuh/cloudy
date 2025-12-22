@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
-import { getInstances, vmAction, getVnc, getInstanceMetrics } from '@/lib/api';
+import { getInstances, getMe, vmAction, getVnc, getInstanceMetrics } from '@/lib/api';
 import type { Instance, VmAction, RrdDataPoint } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -224,6 +224,13 @@ export default function InstanceDetailsPage() {
     const [actionError, setActionError] = useState<string | null>(null);
     const [metricsTimeframe, setMetricsTimeframe] = useState<'hour' | 'day' | 'week' | 'month'>('hour');
 
+    // Get current user to check if admin
+    const { data: currentUser } = useQuery({
+        queryKey: ['me'],
+        queryFn: getMe,
+    });
+    const isAdmin = currentUser?.role === 'ADMIN';
+
     const {
         data: instances,
         isLoading,
@@ -231,8 +238,9 @@ export default function InstanceDetailsPage() {
         error,
         refetch,
     } = useQuery({
-        queryKey: ['instances'],
-        queryFn: () => getInstances(),
+        queryKey: ['instances', isAdmin],
+        queryFn: () => getInstances(isAdmin),
+        enabled: currentUser !== undefined, // Wait for user info before fetching
     });
 
     const instance = instances?.find(
