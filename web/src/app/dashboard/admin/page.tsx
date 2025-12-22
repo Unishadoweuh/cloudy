@@ -300,9 +300,9 @@ export default function AdminDashboardPage() {
                 />
                 <AdminCard
                     title="Paramètres"
-                    description="Configuration générale de la plateforme"
+                    description="Configuration authentification et mail"
                     icon={Settings}
-                    href="/dashboard/settings"
+                    href="/dashboard/admin/settings"
                     iconColor="bg-slate-600"
                 />
                 <AdminCard

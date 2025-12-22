@@ -15,11 +15,15 @@ import { PbsModule } from './pbs/pbs.module';
 import { VncModule } from './vnc/vnc.module';
 import { BillingModule } from './billing/billing.module';
 import { AuditModule } from './audit/audit.module';
+import { AppConfigModule } from './app-config/app-config.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    AppConfigModule, // Global - must be before AuthModule
+    MailModule,      // Global - must be before AuthModule
     ProxmoxModule,
     ComputeModule,
     StorageModule,
@@ -37,3 +41,4 @@ import { AuditModule } from './audit/audit.module';
   providers: [AppService],
 })
 export class AppModule { }
+

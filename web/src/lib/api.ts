@@ -973,3 +973,141 @@ export async function getAuditStats(): Promise<AuditStats> {
         return handleApiError(error);
     }
 }
+
+// ==================== AUTH API ====================
+
+export interface AuthConfig {
+    enableLocalAuth: boolean;
+    enableDiscordAuth: boolean;
+    requireEmailVerification: boolean;
+}
+
+export interface LoginResponse {
+    token: string;
+    user: {
+        id: string;
+        username: string;
+        email: string;
+        role: string;
+        mustChangePassword: boolean;
+    };
+}
+
+export interface AppConfigFull extends AuthConfig {
+    id: string;
+    smtpHost: string | null;
+    smtpPort: number | null;
+    smtpSecure: boolean;
+    smtpUser: string | null;
+    smtpPassword: string | null;
+    mailFrom: string | null;
+    updatedAt: string;
+}
+
+/**
+ * Get public auth configuration (enabled methods)
+ */
+export async function getAuthConfig(): Promise<AuthConfig> {
+    try {
+        const response = await api.get<AuthConfig>('/config/auth');
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Get full app config (admin only)
+ */
+export async function getAppConfig(): Promise<AppConfigFull> {
+    try {
+        const response = await api.get<AppConfigFull>('/config');
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Update app config (admin only)
+ */
+export async function updateAppConfig(data: Partial<AppConfigFull>): Promise<AppConfigFull> {
+    try {
+        const response = await api.patch<AppConfigFull>('/config', data);
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Register with email/password
+ */
+export async function register(username: string, email: string, password: string): Promise<{ message: string }> {
+    try {
+        const response = await api.post<{ message: string }>('/auth/register', { username, email, password });
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Login with email/password
+ */
+export async function login(email: string, password: string): Promise<LoginResponse> {
+    try {
+        const response = await api.post<LoginResponse>('/auth/login', { email, password });
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Verify email with token
+ */
+export async function verifyEmail(token: string): Promise<{ message: string }> {
+    try {
+        const response = await api.get<{ message: string }>('/auth/verify-email', { params: { token } });
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Request password reset
+ */
+export async function forgotPassword(email: string): Promise<{ message: string }> {
+    try {
+        const response = await api.post<{ message: string }>('/auth/forgot-password', { email });
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Reset password with token
+ */
+export async function resetPassword(token: string, password: string): Promise<{ message: string }> {
+    try {
+        const response = await api.post<{ message: string }>('/auth/reset-password', { token, password });
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Change password (requires current password)
+ */
+export async function changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
+    try {
+        const response = await api.post<{ message: string }>('/auth/change-password', { currentPassword, newPassword });
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}

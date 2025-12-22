@@ -29,15 +29,17 @@ enum TransactionType {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  discordId String?  @unique
-  email     String?  @unique
-  password  String?
-  username  String
-  avatar    String?
-  role      Role     @default(USER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(uuid())
+  discordId     String?  @unique
+  email         String?  @unique
+  password      String?
+  username      String
+  avatar        String?
+  role          Role     @default(USER)
+  emailVerified Boolean  @default(false)
+  mustChangePassword Boolean @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
   
   // Resource Limits
   maxCpu       Int      @default(4)
@@ -49,11 +51,12 @@ model User {
   tenantId  String?
   tenant    Tenant?  @relation(fields: [tenantId], references: [id])
 
-  notifications  Notification[]
-  creditBalance  CreditBalance?
-  transactions   Transaction[]
-  usageRecords   UsageRecord[]
-  auditLogs      AuditLog[]
+  notifications      Notification[]
+  creditBalance      CreditBalance?
+  transactions       Transaction[]
+  usageRecords       UsageRecord[]
+  auditLogs          AuditLog[]
+  emailVerifications EmailVerification[]
 }
 
 model Notification {
@@ -267,4 +270,44 @@ model AuditLog {
   @@index([category])
   @@index([userId])
   @@index([action])
+}
+
+// ==================== APP CONFIGURATION ====================
+
+model AppConfig {
+  id    String @id @default("app_config")
+  
+  // Auth Methods
+  enableLocalAuth          Boolean @default(true)
+  enableDiscordAuth        Boolean @default(false)
+  requireEmailVerification Boolean @default(true)
+  
+  // Mail Settings (SMTP)
+  smtpHost     String?
+  smtpPort     Int?     @default(587)
+  smtpSecure   Boolean  @default(false)
+  smtpUser     String?
+  smtpPassword String?
+  mailFrom     String?
+  
+  updatedAt DateTime @updatedAt
+}
+
+model EmailVerification {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  type      VerificationType @default(EMAIL_VERIFY)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([token])
+  @@index([userId])
+}
+
+enum VerificationType {
+  EMAIL_VERIFY
+  PASSWORD_RESET
 }
