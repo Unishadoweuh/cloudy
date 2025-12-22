@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, UseGuards, Request } from '@nestjs/common';
 import { AppConfigService } from './app-config.service';
 import { MailService } from '../mail/mail.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -61,13 +61,14 @@ export class AppConfigController {
         return this.mailService.testConnection();
     }
 
-    // Send test email
+    // Send test email to the current user
     @Post('send-test-mail')
     @UseGuards(JwtAuthGuard, AdminGuard)
-    async sendTestMail(@Body() body: { email: string }) {
-        if (!body.email) {
-            return { success: false, message: 'Email requis' };
+    async sendTestMail(@Request() req: any) {
+        const userEmail = req.user?.email;
+        if (!userEmail) {
+            return { success: false, message: 'Email utilisateur non trouvé' };
         }
-        return this.mailService.sendTestEmail(body.email);
+        return this.mailService.sendTestEmail(userEmail);
     }
 }

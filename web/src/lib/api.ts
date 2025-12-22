@@ -1125,11 +1125,11 @@ export async function testMailConnection(): Promise<{ success: boolean; message:
 }
 
 /**
- * Send test email (admin only)
+ * Send test email (admin only) - sends to current user's email
  */
-export async function sendTestEmail(email: string): Promise<{ success: boolean; message: string }> {
+export async function sendTestEmail(): Promise<{ success: boolean; message: string }> {
     try {
-        const response = await api.post<{ success: boolean; message: string }>('/config/send-test-mail', { email });
+        const response = await api.post<{ success: boolean; message: string }>('/config/send-test-mail');
         return response.data;
     } catch (error) {
         return handleApiError(error);

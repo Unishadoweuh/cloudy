@@ -31,7 +31,6 @@ export default function AdminSettingsPage() {
     const queryClient = useQueryClient();
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
-    const [testEmail, setTestEmail] = useState('');
     const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
     // Check if user is admin
@@ -91,7 +90,7 @@ export default function AdminSettingsPage() {
     });
 
     const sendTestMutation = useMutation({
-        mutationFn: (email: string) => sendTestEmail(email),
+        mutationFn: () => sendTestEmail(),
         onSuccess: (result) => {
             setTestResult(result);
             setTimeout(() => setTestResult(null), 5000);
@@ -119,12 +118,8 @@ export default function AdminSettingsPage() {
     };
 
     const handleSendTestEmail = () => {
-        if (!testEmail) {
-            setTestResult({ success: false, message: 'Veuillez entrer une adresse email' });
-            return;
-        }
         setTestResult(null);
-        sendTestMutation.mutate(testEmail);
+        sendTestMutation.mutate();
     };
 
     if (userLoading || configLoading) {
@@ -380,11 +375,10 @@ export default function AdminSettingsPage() {
                         <CardContent className="space-y-4">
                             {/* Test Result */}
                             {testResult && (
-                                <div className={`flex items-center gap-2 p-3 rounded-lg ${
-                                    testResult.success 
+                                <div className={`flex items-center gap-2 p-3 rounded-lg ${testResult.success
                                         ? 'bg-green-500/10 border border-green-500/20 text-green-400'
                                         : 'bg-red-500/10 border border-red-500/20 text-red-400'
-                                }`}>
+                                    }`}>
                                     {testResult.success ? (
                                         <CheckCircle className="h-4 w-4 flex-shrink-0" />
                                     ) : (
@@ -412,28 +406,20 @@ export default function AdminSettingsPage() {
 
                             <div className="border-t border-slate-700 pt-4">
                                 <p className="text-sm text-slate-400 mb-3">
-                                    Envoyer un email de test pour vérifier la délivrabilité
+                                    Envoyer un email de test à <span className="text-cyan-400 font-medium">{currentUser?.email}</span>
                                 </p>
-                                <div className="flex gap-3">
-                                    <Input
-                                        value={testEmail}
-                                        onChange={(e) => setTestEmail(e.target.value)}
-                                        placeholder="test@example.com"
-                                        className="bg-slate-700/50 border-slate-600 max-w-xs"
-                                    />
-                                    <Button
-                                        onClick={handleSendTestEmail}
-                                        disabled={isTestingMail || !testEmail}
-                                        className="bg-cyan-600 hover:bg-cyan-700"
-                                    >
-                                        {sendTestMutation.isPending ? (
-                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                        ) : (
-                                            <Send className="h-4 w-4 mr-2" />
-                                        )}
-                                        Envoyer test
-                                    </Button>
-                                </div>
+                                <Button
+                                    onClick={handleSendTestEmail}
+                                    disabled={isTestingMail}
+                                    className="bg-cyan-600 hover:bg-cyan-700"
+                                >
+                                    {sendTestMutation.isPending ? (
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    ) : (
+                                        <Send className="h-4 w-4 mr-2" />
+                                    )}
+                                    Envoyer un email de test
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>
