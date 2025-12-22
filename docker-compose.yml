@@ -60,11 +60,13 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${PUBLIC_API_URL:-http://localhost:3002}
     container_name: cloud_proxmox_web
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:3002
+      - NEXT_PUBLIC_API_URL=${PUBLIC_API_URL:-http://localhost:3002}
       # In server-side rendering, web container needs to reach API container
       - API_URL_INTERNAL=http://api:3002
     depends_on:
