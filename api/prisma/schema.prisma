@@ -282,6 +282,11 @@ model AppConfig {
   enableDiscordAuth        Boolean @default(false)
   requireEmailVerification Boolean @default(true)
   
+  // Discord OAuth Settings
+  discordClientId     String?
+  discordClientSecret String?
+  discordCallbackUrl  String?
+  
   // Mail Settings (SMTP)
   smtpHost     String?
   smtpPort     Int?     @default(587)
@@ -290,8 +295,12 @@ model AppConfig {
   smtpPassword String?
   mailFrom     String?
   
+  // Billing Settings
+  billingEnabled Boolean @default(false)
+  
   updatedAt DateTime @updatedAt
 }
+
 
 model EmailVerification {
   id        String   @id @default(uuid())

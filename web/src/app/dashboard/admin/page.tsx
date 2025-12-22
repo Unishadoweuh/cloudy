@@ -98,7 +98,7 @@ function AdminCard({
 }
 
 export default function AdminDashboardPage() {
-    const { enabled: billingEnabled, setEnabled: setBillingEnabled, loading: billingLoading } = useBillingConfig();
+    const { enabled: billingEnabled } = useBillingConfig();
 
     // Check if user is admin
     const { data: currentUser } = useQuery({
@@ -156,12 +156,12 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Billing System Toggle */}
-            <Card className="bg-gradient-to-r from-emerald-900/20 to-cyan-900/20 border-emerald-700/30">
+            <Card className="bg-slate-800/50 border-slate-700/50">
                 <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 rounded-xl bg-emerald-500/20">
-                                <CreditCard className="h-6 w-6 text-emerald-400" />
+                            <div className={`p-3 rounded-xl ${billingEnabled ? 'bg-emerald-500/20' : 'bg-slate-600/20'}`}>
+                                <CreditCard className={`h-6 w-6 ${billingEnabled ? 'text-emerald-400' : 'text-slate-400'}`} />
                             </div>
                             <div>
                                 <h3 className="font-semibold text-lg text-white">Système de Facturation</h3>
@@ -182,12 +182,12 @@ export default function AdminDashboardPage() {
                             )}>
                                 {billingEnabled ? "Activé" : "Désactivé"}
                             </Badge>
-                            <Switch
-                                checked={billingEnabled}
-                                onCheckedChange={setBillingEnabled}
-                                disabled={billingLoading}
-                                className="data-[state=checked]:bg-emerald-500"
-                            />
+                            <Link href="/dashboard/admin/settings">
+                                <Button variant="outline" size="sm" className="border-slate-600 text-slate-300">
+                                    <Settings className="h-4 w-4 mr-1" />
+                                    Configurer
+                                </Button>
+                            </Link>
                         </div>
                     </div>
                 </CardContent>

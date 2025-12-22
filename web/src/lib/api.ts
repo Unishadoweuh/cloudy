@@ -995,12 +995,19 @@ export interface LoginResponse {
 
 export interface AppConfigFull extends AuthConfig {
     id: string;
+    // Discord OAuth
+    discordClientId: string | null;
+    discordClientSecret: string | null;
+    discordCallbackUrl: string | null;
+    // SMTP
     smtpHost: string | null;
     smtpPort: number | null;
     smtpSecure: boolean;
     smtpUser: string | null;
     smtpPassword: string | null;
     mailFrom: string | null;
+    // Billing
+    billingEnabled: boolean;
     updatedAt: string;
 }
 

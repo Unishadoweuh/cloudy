@@ -12,20 +12,23 @@ export class DiscordStrategy extends PassportStrategy(Strategy, 'discord') {
         private configService: ConfigService,
         private authService: AuthService,
     ) {
-        const clientID = configService.get<string>('DISCORD_CLIENT_ID');
-        const clientSecret = configService.get<string>('DISCORD_CLIENT_SECRET');
+        // Note: Discord OAuth can be configured via Admin Settings (DB) or env vars
+        // Env vars are used for initial Passport setup as Passport requires config at construction time
+        const clientID = configService.get<string>('DISCORD_CLIENT_ID') || 'not-configured';
+        const clientSecret = configService.get<string>('DISCORD_CLIENT_SECRET') || 'not-configured';
         const callbackURL = configService.get<string>('DISCORD_CALLBACK_URL') || 'https://cp.unishadow.ovh/auth/discord/callback';
 
-        // Use dummy values if not configured (will fail at runtime but not during startup)
         super({
-            clientID: clientID || 'not-configured',
-            clientSecret: clientSecret || 'not-configured',
-            callbackURL: callbackURL,
+            clientID,
+            clientSecret,
+            callbackURL,
             scope: ['identify', 'email'],
         });
 
-        if (!clientID || !clientSecret) {
-            this.logger.warn('Discord OAuth not configured. Set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET environment variables.');
+        if (clientID === 'not-configured') {
+            this.logger.warn('Discord OAuth not configured. Configure in Admin Settings or set DISCORD_CLIENT_ID/SECRET env vars.');
+        } else {
+            this.logger.log('Discord OAuth configured via environment variables');
         }
     }
 
@@ -42,3 +45,4 @@ export class DiscordStrategy extends PassportStrategy(Strategy, 'discord') {
         return user;
     }
 }
+

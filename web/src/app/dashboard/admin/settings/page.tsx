@@ -22,6 +22,7 @@ import {
     Server,
     Send,
     Zap,
+    CreditCard,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -54,12 +55,19 @@ export default function AdminSettingsPage() {
             enableLocalAuth: config.enableLocalAuth,
             enableDiscordAuth: config.enableDiscordAuth,
             requireEmailVerification: config.requireEmailVerification,
+            // Discord OAuth
+            discordClientId: config.discordClientId || '',
+            discordClientSecret: '',
+            discordCallbackUrl: config.discordCallbackUrl || 'https://cp.unishadow.ovh/auth/discord/callback',
+            // SMTP
             smtpHost: config.smtpHost || '',
             smtpPort: config.smtpPort || 587,
             smtpSecure: config.smtpSecure || false,
             smtpUser: config.smtpUser || '',
             smtpPassword: '',
             mailFrom: config.mailFrom || '',
+            // Billing
+            billingEnabled: config.billingEnabled || false,
         });
     }
 
@@ -103,10 +111,13 @@ export default function AdminSettingsPage() {
     const handleSave = () => {
         if (!formData) return;
 
-        // Only send password if changed (not empty and not the masked value)
+        // Only send secrets if changed (not empty and not the masked value)
         const data = { ...formData };
         if (!data.smtpPassword || data.smtpPassword === '********') {
             delete data.smtpPassword;
+        }
+        if (!data.discordClientSecret || data.discordClientSecret === '********') {
+            delete data.discordClientSecret;
         }
 
         updateMutation.mutate(data);
@@ -194,6 +205,10 @@ export default function AdminSettingsPage() {
                     <TabsTrigger value="mail" className="data-[state=active]:bg-primary/20 gap-2">
                         <Mail className="h-4 w-4" />
                         Serveur Mail
+                    </TabsTrigger>
+                    <TabsTrigger value="billing" className="data-[state=active]:bg-primary/20 gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Facturation
                     </TabsTrigger>
                 </TabsList>
 
@@ -376,8 +391,8 @@ export default function AdminSettingsPage() {
                             {/* Test Result */}
                             {testResult && (
                                 <div className={`flex items-center gap-2 p-3 rounded-lg ${testResult.success
-                                        ? 'bg-green-500/10 border border-green-500/20 text-green-400'
-                                        : 'bg-red-500/10 border border-red-500/20 text-red-400'
+                                    ? 'bg-green-500/10 border border-green-500/20 text-green-400'
+                                    : 'bg-red-500/10 border border-red-500/20 text-red-400'
                                     }`}>
                                     {testResult.success ? (
                                         <CheckCircle className="h-4 w-4 flex-shrink-0" />
@@ -420,6 +435,103 @@ export default function AdminSettingsPage() {
                                     )}
                                     Envoyer un email de test
                                 </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                {/* Billing Tab */}
+                <TabsContent value="billing" className="mt-6 space-y-6">
+                    <Card className="bg-slate-800/50 border-slate-700/50">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <CreditCard className="h-5 w-5 text-primary" />
+                                Système de facturation
+                            </CardTitle>
+                            <CardDescription>
+                                Activez ou désactivez le système de facturation et de crédits
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg">
+                                <div className="flex items-center gap-4">
+                                    <div className={`p-2 rounded-lg ${formData.billingEnabled ? 'bg-green-500/20' : 'bg-slate-600/20'}`}>
+                                        <CreditCard className={`h-5 w-5 ${formData.billingEnabled ? 'text-green-400' : 'text-slate-400'}`} />
+                                    </div>
+                                    <div>
+                                        <p className="font-medium text-white">Activer la facturation</p>
+                                        <p className="text-sm text-slate-400">
+                                            {formData.billingEnabled
+                                                ? 'Les utilisateurs peuvent acheter des crédits et payer pour les ressources'
+                                                : 'Le système fonctionne sans facturation (gratuit)'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <Switch
+                                    checked={formData.billingEnabled}
+                                    onCheckedChange={(checked) =>
+                                        setFormData({ ...formData, billingEnabled: checked })
+                                    }
+                                />
+                            </div>
+
+                            {formData.billingEnabled && (
+                                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                                    <p className="text-sm text-amber-400">
+                                        <strong>Note :</strong> Après avoir activé la facturation, configurez vos tarifs et méthodes de paiement dans la section admin.
+                                    </p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Discord OAuth Config */}
+                    <Card className="bg-slate-800/50 border-slate-700/50">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <svg className="h-5 w-5 text-[#5865F2]" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+                                </svg>
+                                Configuration Discord OAuth
+                            </CardTitle>
+                            <CardDescription>
+                                Configurez les identifiants Discord pour la connexion OAuth2
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label className="text-slate-300">Client ID</Label>
+                                <Input
+                                    value={formData.discordClientId || ''}
+                                    onChange={(e) => setFormData({ ...formData, discordClientId: e.target.value })}
+                                    placeholder="123456789012345678"
+                                    className="bg-slate-700/50 border-slate-600"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-slate-300">Client Secret</Label>
+                                <Input
+                                    type="password"
+                                    value={formData.discordClientSecret || ''}
+                                    onChange={(e) => setFormData({ ...formData, discordClientSecret: e.target.value })}
+                                    placeholder="••••••••"
+                                    className="bg-slate-700/50 border-slate-600"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-slate-300">Callback URL</Label>
+                                <Input
+                                    value={formData.discordCallbackUrl || ''}
+                                    onChange={(e) => setFormData({ ...formData, discordCallbackUrl: e.target.value })}
+                                    placeholder="https://cp.unishadow.ovh/auth/discord/callback"
+                                    className="bg-slate-700/50 border-slate-600"
+                                />
+                            </div>
+                            <div className="p-4 bg-slate-700/30 rounded-lg">
+                                <p className="text-sm text-slate-400">
+                                    <strong>Note :</strong> Ces paramètres prennent effet après redémarrage du serveur API.
+                                    Les variables d&apos;environnement (DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET) sont utilisées en priorité si définies.
+                                </p>
                             </div>
                         </CardContent>
                     </Card>
