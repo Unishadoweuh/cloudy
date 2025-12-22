@@ -137,21 +137,21 @@ export default function DashboardLayout({
     const SidebarContent = () => (
         <div className="flex flex-col h-full">
             {/* Logo */}
-            <div className="p-5 border-b border-slate-800/50">
+            <div className="p-5 border-b border-white/10">
                 <Link href="/dashboard" className="flex items-center gap-3 group">
-                    <div className="p-2.5 bg-slate-800 rounded-xl group-hover:bg-slate-700 transition-colors">
-                        <Zap className="h-5 w-5 text-cyan-400" />
+                    <div className="p-2.5 bg-white/10 rounded-xl group-hover:bg-white/20 transition-colors">
+                        <Zap className="h-5 w-5 text-[var(--theme-primary)]" />
                     </div>
                     <div>
                         <h1 className="text-lg font-bold text-white">Cloudy</h1>
-                        <p className="text-xs text-slate-500">Proxmox Dashboard</p>
+                        <p className="text-xs text-white/50">Proxmox Dashboard</p>
                     </div>
                 </Link>
             </div>
 
             {/* Main Navigation */}
             <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-                <p className="px-3 text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">
+                <p className="px-3 text-xs font-medium text-white/40 uppercase tracking-wider mb-3">
                     Infrastructure
                 </p>
                 {navigation.map((item) => {
@@ -168,7 +168,7 @@ export default function DashboardLayout({
                                 "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
                                 isActive
                                     ? themeClasses.sidebarActive
-                                    : "text-slate-400 hover:text-white hover:bg-slate-800/50",
+                                    : "text-white/60 hover:text-white hover:bg-white/10",
                                 item.disabled ? "opacity-40 cursor-not-allowed pointer-events-none" : ""
                             )}
                         >
@@ -177,13 +177,13 @@ export default function DashboardLayout({
                             {item.badge && (
                                 <span className={cn(
                                     "ml-auto text-[10px] px-1.5 py-0.5 rounded font-medium",
-                                    item.badgeColor || "bg-slate-700 text-slate-400"
+                                    item.badgeColor || "bg-white/10 text-white/60"
                                 )}>
                                     {item.badge}
                                 </span>
                             )}
                             {item.disabled && !item.badge && (
-                                <span className="ml-auto text-[10px] bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded">
+                                <span className="ml-auto text-[10px] bg-white/10 text-white/50 px-1.5 py-0.5 rounded">
                                     Soon
                                 </span>
                             )}
@@ -192,7 +192,7 @@ export default function DashboardLayout({
                 })}
 
                 <div className="pt-4">
-                    <p className="px-3 text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">
+                    <p className="px-3 text-xs font-medium text-white/40 uppercase tracking-wider mb-3">
                         Management
                     </p>
                     {secondaryNav.map((item) => {
@@ -207,14 +207,14 @@ export default function DashboardLayout({
                                     "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
                                     isActive
                                         ? themeClasses.sidebarActive
-                                        : "text-slate-400 hover:text-white hover:bg-slate-800/50",
+                                        : "text-white/60 hover:text-white hover:bg-white/10",
                                     item.disabled && "opacity-40 cursor-not-allowed pointer-events-none"
                                 )}
                             >
                                 <Icon className="h-5 w-5" />
                                 <span className="font-medium">{item.name}</span>
                                 {item.disabled && (
-                                    <span className="ml-auto text-[10px] bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded">
+                                    <span className="ml-auto text-[10px] bg-white/10 text-white/50 px-1.5 py-0.5 rounded">
                                         Soon
                                     </span>
                                 )}
@@ -229,17 +229,17 @@ export default function DashboardLayout({
                         className={cn(
                             "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
                             pathname === '/dashboard/settings'
-                                ? "bg-slate-800 text-white"
-                                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                                ? "themeClasses.sidebarActive"
+                                : "text-white/60 hover:text-white hover:bg-white/10"
                         )}
                     >
-                        <Settings className={cn("h-5 w-5", pathname === '/dashboard/settings' && "text-cyan-400")} />
+                        <Settings className={cn("h-5 w-5", pathname === '/dashboard/settings' && "text-[var(--theme-primary)]")} />
                         <span className="font-medium">{t('common.settings')}</span>
                     </Link>
 
                     {/* Status - hidden on main dashboard page */}
                     {pathname !== '/dashboard' && (
-                        <div className="mt-4 px-3 py-3 rounded-lg bg-slate-800/50 border border-slate-700/30">
+                        <div className="mt-4 px-3 py-3 rounded-lg bg-white/5 border border-white/10">
                             <div className="flex items-center gap-2">
                                 <span className="relative flex h-2.5 w-2.5">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -247,7 +247,7 @@ export default function DashboardLayout({
                                 </span>
                                 <span className="text-sm text-white">{t('dashboard.systemOnline')}</span>
                             </div>
-                            <p className="text-xs text-slate-500 mt-1 ml-4">{t('dashboard.allServicesRunning')}</p>
+                            <p className="text-xs text-white/50 mt-1 ml-4">{t('dashboard.allServicesRunning')}</p>
                         </div>
                     )}
                 </div>
@@ -296,7 +296,7 @@ export default function DashboardLayout({
                 {/* Close button */}
                 <button
                     onClick={() => setSidebarOpen(false)}
-                    className="absolute top-4 right-4 p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors"
+                    className="absolute top-4 right-4 p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
                 >
                     <X className="h-5 w-5" />
                 </button>
@@ -306,16 +306,16 @@ export default function DashboardLayout({
             {/* Main Content */}
             <main className="flex-1 lg:ml-64">
                 {/* Mobile Header */}
-                <div className="sticky top-0 z-30 lg:hidden bg-slate-900/95 backdrop-blur-sm border-b border-slate-800/50">
+                <div className="sticky top-0 z-30 lg:hidden bg-slate-900/95 backdrop-blur-sm border-b border-white/10">
                     <div className="flex items-center justify-between px-4 py-3">
                         <button
                             onClick={() => setSidebarOpen(true)}
-                            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors"
+                            className="p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
                         >
                             <Menu className="h-6 w-6" />
                         </button>
                         <Link href="/dashboard" className="flex items-center gap-2">
-                            <Zap className="h-5 w-5 text-cyan-400" />
+                            <Zap className="h-5 w-5 text-[var(--theme-primary)]" />
                             <span className="font-bold text-white">Cloudy</span>
                         </Link>
                         <div className="flex items-center gap-2">
