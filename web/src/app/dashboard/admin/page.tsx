@@ -155,44 +155,6 @@ export default function AdminDashboardPage() {
                 </div>
             </div>
 
-            {/* Billing System Toggle */}
-            <Card className="bg-slate-800/50 border-slate-700/50">
-                <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className={`p-3 rounded-xl ${billingEnabled ? 'bg-emerald-500/20' : 'bg-slate-600/20'}`}>
-                                <CreditCard className={`h-6 w-6 ${billingEnabled ? 'text-emerald-400' : 'text-slate-400'}`} />
-                            </div>
-                            <div>
-                                <h3 className="font-semibold text-lg text-white">Système de Facturation</h3>
-                                <p className="text-sm text-slate-400 mt-1">
-                                    {billingEnabled
-                                        ? "Actif - Les utilisateurs voient leur solde et les pages de facturation"
-                                        : "Désactivé - Les pages de facturation sont masquées pour tous les utilisateurs"
-                                    }
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <Badge className={cn(
-                                "text-sm px-3 py-1",
-                                billingEnabled
-                                    ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                                    : "bg-slate-500/20 text-slate-400 border-slate-500/30"
-                            )}>
-                                {billingEnabled ? "Activé" : "Désactivé"}
-                            </Badge>
-                            <Link href="/dashboard/admin/settings">
-                                <Button variant="outline" size="sm" className="border-slate-600 text-slate-300">
-                                    <Settings className="h-4 w-4 mr-1" />
-                                    Configurer
-                                </Button>
-                            </Link>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
             {/* Quick Stats */}
             <div className="grid gap-4 md:grid-cols-4">
                 <Card className="bg-slate-800/50 border-slate-700/50">
