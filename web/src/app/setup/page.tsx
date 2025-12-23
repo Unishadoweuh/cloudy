@@ -651,7 +651,7 @@ export default function SetupPage() {
                             <Alert className="bg-amber-500/10 border-amber-500/30">
                                 <AlertCircle className="h-4 w-4 text-amber-400" />
                                 <AlertDescription className="text-amber-300 text-sm">
-                                    Après la configuration, connectez-vous avec : <strong>admin / admin</strong>
+                                    Après la configuration, connectez-vous avec : <strong>admin@localhost / admin</strong>
                                 </AlertDescription>
                             </Alert>
 
