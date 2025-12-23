@@ -3,8 +3,9 @@ import { ProxmoxService } from '../proxmox/proxmox.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BillingService } from '../billing/billing.service';
 import { AuditService } from '../audit/audit.service';
+import { SharingService } from '../sharing/sharing.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { BillingMode, AuditAction, AuditCategory } from '@prisma/client';
+import { BillingMode, AuditAction, AuditCategory, SharePermission } from '@prisma/client';
 
 @Controller('compute')
 @UseGuards(JwtAuthGuard)
@@ -13,7 +14,8 @@ export class ComputeController {
         private readonly proxmoxService: ProxmoxService,
         private readonly notificationsService: NotificationsService,
         private readonly billingService: BillingService,
-        private readonly auditService: AuditService
+        private readonly auditService: AuditService,
+        private readonly sharingService: SharingService
     ) { }
 
     @Get('instances')
@@ -21,8 +23,42 @@ export class ComputeController {
         const user = req.user;
         // Admins can see all if showAll=true, users always see only their own
         const showAllInstances = showAll === 'true' && user.role === 'ADMIN';
-        const vms = await this.proxmoxService.getResourcesWithIp(user.id, showAllInstances);
-        return vms;
+        const ownedVms = await this.proxmoxService.getResourcesWithIp(user.id, showAllInstances);
+
+        // Get shared instances
+        const shares = await this.sharingService.getSharedWithMe(user.id);
+
+        // Fetch details for shared instances
+        const sharedVms = await Promise.all(
+            shares.map(async (share: any) => {
+                // Use showAll=true to get the VM regardless of ownership
+                const allVms = await this.proxmoxService.getResourcesWithIp(undefined, true);
+                const vm = allVms.find((v: any) => v.vmid === share.vmid && v.node === share.node);
+                if (vm) {
+                    return {
+                        ...vm,
+                        isShared: true,
+                        sharedBy: share.owner,
+                        sharePermission: share.permission,
+                        shareId: share.id
+                    };
+                }
+                return null;
+            })
+        );
+
+        // Filter out nulls (deleted VMs)
+        const validSharedVms = sharedVms.filter(vm => vm !== null);
+
+        // Mark owned VMs and merge
+        const markedOwnedVms = ownedVms.map((vm: any) => ({ ...vm, isOwner: true }));
+
+        // Remove duplicates (in case a shared VM is also owned)
+        const uniqueSharedVms = validSharedVms.filter(
+            (shared: any) => !markedOwnedVms.some((owned: any) => owned.vmid === shared.vmid && owned.node === shared.node)
+        );
+
+        return [...markedOwnedVms, ...uniqueSharedVms];
     }
 
     @Get('nodes')

@@ -5,7 +5,7 @@
 # Configuration
 PROXMOX_URL="https://145.239.11.171:8006"
 PROXMOX_TOKEN="root@pam!cloud_proxmox=455a6254-a0f7-4e8a-9f88-c745d6b9bd67"
-USER_ID="6bfed345-8e73-4fa9-9dab-7e5d133deb02"  # unishadow@etik.com
+USER_ID="25249e8d-359e-4a04-9dc8-edc336809fb9"  # unishadow@etik.com
 
 TAG="owner-${USER_ID}"
 

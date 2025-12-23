@@ -43,10 +43,13 @@ import {
     ExternalLink,
     RefreshCw,
     Camera,
+    Share2,
+    Users,
 } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { ShareDialog } from '@/components/share-dialog';
 
 function formatBytes(bytes: number): string {
     if (bytes === 0) return '0 B';
@@ -223,6 +226,7 @@ export default function InstanceDetailsPage() {
     const [actionSuccess, setActionSuccess] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const [metricsTimeframe, setMetricsTimeframe] = useState<'hour' | 'day' | 'week' | 'month'>('hour');
+    const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
     // Get current user to check if admin
     const { data: currentUser } = useQuery({
@@ -401,7 +405,29 @@ export default function InstanceDetailsPage() {
                 >
                     Shutdown
                 </ActionButton>
+
+                {/* Share button - only show for owner */}
+                {(instance as any).isOwner !== false && (
+                    <Button
+                        variant="outline"
+                        onClick={() => setShareDialogOpen(true)}
+                        className="border-white/10 hover:border-white/20 hover:bg-white/5 gap-2"
+                    >
+                        <Share2 className="h-4 w-4" />
+                        Share
+                    </Button>
+                )}
             </div>
+
+            {/* Share Dialog */}
+            <ShareDialog
+                open={shareDialogOpen}
+                onOpenChange={setShareDialogOpen}
+                vmid={instance.vmid}
+                node={instance.node}
+                vmType={instance.type}
+                vmName={instance.name}
+            />
 
             {/* Tabs */}
             <Tabs defaultValue="overview" className="w-full">

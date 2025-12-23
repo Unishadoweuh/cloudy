@@ -188,6 +188,37 @@ model UsageRecord {
   updatedAt   DateTime    @updatedAt
 }
 
+// ==================== INSTANCE SHARING ====================
+
+// Permission levels for shared instances
+enum SharePermission {
+  READONLY      // View status, metrics only
+  MAINTENANCE   // View + Console + Start/Stop/Restart
+  ADMIN         // All permissions except delete and sharing
+}
+
+// Instance sharing relationship
+model InstanceShare {
+  id          String          @id @default(uuid())
+  vmid        Int             // Proxmox VM ID
+  node        String          // Proxmox node
+  vmType      String          // qemu or lxc
+  vmName      String?         // VM name for display
+  
+  ownerId     String          // User who owns the instance
+  sharedWithId String         // User instance is shared with
+  
+  permission  SharePermission @default(READONLY)
+  
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  expiresAt   DateTime?       // Optional expiration
+  
+  @@unique([vmid, node, sharedWithId])
+  @@index([sharedWithId])
+  @@index([ownerId])
+}
+
 // ==================== AUDIT LOG MODELS ====================
 
 enum AuditAction {
@@ -223,6 +254,10 @@ enum AuditAction {
   UPDATE_PRICING
   UPDATE_BILLING_CONFIG
   SYSTEM_ERROR
+  
+  // Sharing
+  SHARE_INSTANCE
+  REVOKE_SHARE
 }
 
 enum AuditCategory {

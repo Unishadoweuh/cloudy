@@ -871,6 +871,135 @@ export async function getAllBalances(): Promise<Array<CreditBalance & { user: { 
     }
 }
 
+// ==================== SHARING API ====================
+
+export type SharePermission = 'READONLY' | 'MAINTENANCE' | 'ADMIN';
+
+export interface InstanceShare {
+    id: string;
+    vmid: number;
+    node: string;
+    vmType: string;
+    vmName?: string;
+    ownerId: string;
+    sharedWithId: string;
+    permission: SharePermission;
+    createdAt: string;
+    updatedAt: string;
+    expiresAt?: string;
+    sharedWith?: {
+        id: string;
+        username: string;
+        email?: string;
+        avatar?: string;
+    };
+    owner?: {
+        id: string;
+        username: string;
+        email?: string;
+        avatar?: string;
+    };
+}
+
+export interface ShareUser {
+    id: string;
+    username: string;
+    email?: string;
+    avatar?: string;
+}
+
+/**
+ * Share an instance with another user
+ */
+export async function shareInstance(
+    vmid: number,
+    node: string,
+    vmType: string,
+    vmName: string,
+    email: string,
+    permission: SharePermission,
+    expiresAt?: string
+): Promise<InstanceShare> {
+    try {
+        const response = await api.post<InstanceShare>('/sharing', {
+            vmid,
+            node,
+            vmType,
+            vmName,
+            email,
+            permission,
+            expiresAt
+        });
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Get instances I've shared with others
+ */
+export async function getMyShares(): Promise<InstanceShare[]> {
+    try {
+        const response = await api.get<InstanceShare[]>('/sharing/my-shares');
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Get instances shared with me
+ */
+export async function getSharedWithMe(): Promise<InstanceShare[]> {
+    try {
+        const response = await api.get<InstanceShare[]>('/sharing/shared-with-me');
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Get shares for a specific instance
+ */
+export async function getInstanceShares(vmid: number, node: string): Promise<InstanceShare[]> {
+    try {
+        const response = await api.get<InstanceShare[]>(`/sharing/instance/${vmid}`, {
+            params: { node }
+        });
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Revoke a share
+ */
+export async function revokeShare(shareId: string): Promise<{ success: boolean }> {
+    try {
+        const response = await api.delete<{ success: boolean }>(`/sharing/${shareId}`);
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+/**
+ * Search users for sharing autocomplete
+ */
+export async function searchUsersForSharing(query: string): Promise<ShareUser[]> {
+    try {
+        const response = await api.get<ShareUser[]>('/sharing/users/search', {
+            params: { q: query }
+        });
+        return response.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
 // ==================== AUDIT LOG API ====================
 
 export type AuditCategory = 'COMPUTE' | 'BILLING' | 'AUTH' | 'BACKUP' | 'ADMIN' | 'SYSTEM';
@@ -880,7 +1009,8 @@ export type AuditAction =
     | 'ADD_CREDITS' | 'DEDUCT_CREDITS' | 'REFUND_CREDITS'
     | 'USER_LOGIN' | 'USER_LOGOUT' | 'UPDATE_USER_ROLE' | 'UPDATE_USER_LIMITS' | 'DELETE_USER'
     | 'CREATE_BACKUP' | 'DELETE_BACKUP' | 'RESTORE_BACKUP'
-    | 'UPDATE_PRICING' | 'UPDATE_BILLING_CONFIG' | 'SYSTEM_ERROR';
+    | 'UPDATE_PRICING' | 'UPDATE_BILLING_CONFIG' | 'SYSTEM_ERROR'
+    | 'SHARE_INSTANCE' | 'REVOKE_SHARE';
 export type AuditStatus = 'SUCCESS' | 'ERROR' | 'WARNING';
 
 export interface AuditLog {

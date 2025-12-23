@@ -1,4 +1,5 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { BillingMode, TransactionType, Prisma } from '@prisma/client';
 
@@ -401,14 +402,20 @@ export class BillingService {
 
     /**
      * Process hourly billing for all active PAYG instances (cron job)
+     * Runs every hour at minute 0
      */
+    @Cron(CronExpression.EVERY_HOUR)
     async processHourlyBilling() {
+        this.logger.log('Starting hourly billing process...');
+
         const activeRecords = await this.prisma.usageRecord.findMany({
             where: {
                 isActive: true,
                 billingMode: BillingMode.PAYG
             }
         });
+
+        this.logger.log(`Found ${activeRecords.length} active PAYG usage records`);
 
         const results = [];
         const now = new Date();

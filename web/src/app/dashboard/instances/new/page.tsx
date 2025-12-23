@@ -355,13 +355,23 @@ export default function CreateInstancePage() {
     function onSubmit(values: FormValues) {
         // Only allow submission on the last step
         if (currentStep !== steps.length - 1) {
-            console.log('Submission blocked: not on last step');
+            console.log('Submission blocked: not on last step, currentStep:', currentStep);
+            return;
+        }
+        // Prevent double submission
+        if (createMutation.isPending) {
+            console.log('Submission blocked: already pending');
             return;
         }
         createMutation.mutate(values);
     }
 
-    function nextStep() {
+    function nextStep(e?: React.MouseEvent) {
+        // Prevent any form submission when navigating between steps
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         if (currentStep < steps.length - 1) {
             setCurrentStep(currentStep + 1);
         }
@@ -727,7 +737,11 @@ export default function CreateInstancePage() {
                         {currentStep < steps.length - 1 ? (
                             <Button
                                 type="button"
-                                onClick={nextStep}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    nextStep(e);
+                                }}
                                 disabled={!canProceedFromStep(currentStep)}
                                 className="bg-slate-700 hover:bg-slate-600 text-white"
                             >

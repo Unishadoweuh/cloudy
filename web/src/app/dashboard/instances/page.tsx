@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getInstances, vmAction, deleteInstance, getMe } from '@/lib/api';
 import type { Instance } from '@/lib/types';
+import { DeleteInstanceModal } from '@/components/DeleteInstanceModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -37,6 +38,8 @@ import {
     Globe,
     Copy,
     Check,
+    Users,
+    Share2,
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -117,6 +120,8 @@ function InstanceCard({ instance }: { instance: Instance }) {
     const isRunning = instance.status === 'running';
     const isVM = instance.type === 'qemu';
     const colorClass = isVM ? 'bg-cyan-500' : 'bg-violet-500';
+    const isShared = (instance as any).isShared;
+    const sharedBy = (instance as any).sharedBy;
 
     // Calculate usage percentages
     const cpuPercent = isRunning && instance.cpu ? (instance.cpu * 100) : 0;
@@ -162,6 +167,14 @@ function InstanceCard({ instance }: { instance: Instance }) {
                         {instance.status}
                     </Badge>
                 </div>
+
+                {/* Shared indicator */}
+                {isShared && (
+                    <div className="flex items-center gap-1 text-xs text-blue-400 bg-blue-500/10 px-2 py-1 rounded-md">
+                        <Share2 className="h-3 w-3" />
+                        <span>Shared by {sharedBy?.username || 'user'}</span>
+                    </div>
+                )}
 
                 {/* Resource usage bars */}
                 {isRunning && (
@@ -221,10 +234,13 @@ function InstanceCard({ instance }: { instance: Instance }) {
     );
 }
 
-function InstanceTableRow({ instance, index, onAction, onDelete }: { instance: Instance; index: number; onAction: (action: string) => void; onDelete: () => void }) {
+function InstanceTableRow({ instance, index, onAction, onDelete }: { instance: Instance; index: number; onAction: (action: string) => void; onDelete: (e: React.MouseEvent) => void }) {
     const router = useRouter();
     const isRunning = instance.status === 'running';
     const isVM = instance.type === 'qemu';
+    const isShared = (instance as any).isShared;
+    const sharedBy = (instance as any).sharedBy;
+    const isOwner = (instance as any).isOwner !== false;
 
     return (
         <tr
@@ -245,7 +261,15 @@ function InstanceTableRow({ instance, index, onAction, onDelete }: { instance: I
                     </div>
                     <div>
                         <p className="font-medium text-white">{instance.name}</p>
-                        <p className="text-xs text-slate-500">ID: {instance.vmid}</p>
+                        <div className="flex items-center gap-2">
+                            <p className="text-xs text-slate-500">ID: {instance.vmid}</p>
+                            {isShared && (
+                                <span className="inline-flex items-center gap-1 text-[10px] text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded">
+                                    <Share2 className="h-2.5 w-2.5" />
+                                    {sharedBy?.username}
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
             </td>
@@ -321,10 +345,7 @@ function InstanceTableRow({ instance, index, onAction, onDelete }: { instance: I
                                 className="text-red-400 hover:text-red-300 focus:text-red-300 focus:bg-slate-700 cursor-pointer"
                                 onSelect={(e) => {
                                     e.preventDefault();
-                                    const confirmed = window.confirm('Êtes-vous sûr de vouloir supprimer cette instance ? Cette action est irréversible.');
-                                    if (confirmed) {
-                                        onDelete();
-                                    }
+                                    onDelete(e as unknown as React.MouseEvent);
                                 }}
                             >
                                 <Trash2 className="mr-2 h-4 w-4" />
@@ -406,6 +427,7 @@ export default function InstancesPage() {
     const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'stopped'>('all');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
     const [showAll, setShowAll] = useState(false);
+    const [deleteModalInstance, setDeleteModalInstance] = useState<Instance | null>(null);
 
     const queryClient = useQueryClient();
 
@@ -454,11 +476,19 @@ export default function InstancesPage() {
         });
     };
 
-    const handleDelete = (instance: Instance) => {
-        deleteMutation.mutate({
-            vmid: String(instance.vmid),
-            node: instance.node,
-            type: instance.type as 'qemu' | 'lxc'
+    const handleDelete = (instance: Instance, e?: React.MouseEvent) => {
+        if (e) {
+            e.stopPropagation();
+        }
+        setDeleteModalInstance(instance);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deleteModalInstance) return;
+        await deleteMutation.mutateAsync({
+            vmid: String(deleteModalInstance.vmid),
+            node: deleteModalInstance.node,
+            type: deleteModalInstance.type as 'qemu' | 'lxc'
         });
     };
 
@@ -694,13 +724,21 @@ export default function InstancesPage() {
                                     instance={instance}
                                     index={index}
                                     onAction={(action) => handleAction(instance, action)}
-                                    onDelete={() => handleDelete(instance)}
+                                    onDelete={(e) => handleDelete(instance, e)}
                                 />
                             ))}
                         </tbody>
                     </table>
                 </div>
             )}
+
+            {/* Delete Confirmation Modal */}
+            <DeleteInstanceModal
+                instance={deleteModalInstance}
+                isOpen={deleteModalInstance !== null}
+                onClose={() => setDeleteModalInstance(null)}
+                onConfirm={handleConfirmDelete}
+            />
         </div>
     );
 }

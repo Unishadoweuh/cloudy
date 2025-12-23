@@ -17,6 +17,7 @@ import { BillingModule } from './billing/billing.module';
 import { AuditModule } from './audit/audit.module';
 import { AppConfigModule } from './app-config/app-config.module';
 import { MailModule } from './mail/mail.module';
+import { SharingModule } from './sharing/sharing.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { MailModule } from './mail/mail.module';
     VncModule,
     BillingModule,
     AuditModule,
+    SharingModule,
   ],
   controllers: [AppController],
   providers: [AppService],
