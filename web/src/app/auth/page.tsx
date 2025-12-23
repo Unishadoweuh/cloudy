@@ -20,6 +20,7 @@ function AuthContent() {
     const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [checkingSetup, setCheckingSetup] = useState(true);
 
     // Form state
     const [loginEmail, setLoginEmail] = useState('');
@@ -28,6 +29,24 @@ function AuthContent() {
     const [registerEmail, setRegisterEmail] = useState('');
     const [registerPassword, setRegisterPassword] = useState('');
     const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
+
+    // Check if setup is completed
+    useEffect(() => {
+        const checkSetup = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/config/setup-status`);
+                const status = await res.json();
+                if (!status.setupCompleted) {
+                    router.push('/setup');
+                    return;
+                }
+            } catch (err) {
+                // If error, assume setup is done and continue
+            }
+            setCheckingSetup(false);
+        };
+        checkSetup();
+    }, [router]);
 
     // Check for error in URL
     useEffect(() => {
@@ -41,6 +60,7 @@ function AuthContent() {
     const { data: authConfig, isLoading: configLoading } = useQuery({
         queryKey: ['authConfig'],
         queryFn: getAuthConfig,
+        enabled: !checkingSetup,
     });
 
     // Login mutation
@@ -102,7 +122,7 @@ function AuthContent() {
         window.location.href = `${API_BASE_URL}/auth/discord`;
     };
 
-    if (configLoading) {
+    if (checkingSetup || configLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />

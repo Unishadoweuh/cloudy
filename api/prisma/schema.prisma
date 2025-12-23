@@ -277,6 +277,24 @@ model AuditLog {
 model AppConfig {
   id    String @id @default("app_config")
   
+  // Setup Status
+  setupCompleted Boolean @default(false)
+  
+  // Proxmox Configuration
+  pveHost        String?
+  pveTokenId     String?
+  pveTokenSecret String?
+  
+  // PBS Configuration
+  pbsEnabled     Boolean @default(false)
+  pbsHost        String?
+  pbsTokenId     String?
+  pbsTokenSecret String?
+  
+  // URLs Configuration
+  frontendUrl    String?
+  apiUrl         String?
+  
   // Auth Methods
   enableLocalAuth          Boolean @default(true)
   enableDiscordAuth        Boolean @default(false)

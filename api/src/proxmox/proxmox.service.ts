@@ -1,26 +1,100 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../prisma/prisma.service';
 import axios, { AxiosInstance } from 'axios';
 import * as https from 'https';
 
 @Injectable()
-export class ProxmoxService {
+export class ProxmoxService implements OnModuleInit {
     private readonly logger = new Logger(ProxmoxService.name);
     private client: AxiosInstance;
+    private configLoaded = false;
 
-    constructor(private configService: ConfigService) {
-        const baseURL = this.configService.get<string>('PROXMOX_API_URL');
-        const apiToken = this.configService.get<string>('PROXMOX_API_TOKEN');
-
+    constructor(
+        private configService: ConfigService,
+        private prisma: PrismaService,
+    ) {
+        // Initialize with a placeholder client, will be configured in onModuleInit
         this.client = axios.create({
-            baseURL,
-            httpsAgent: new https.Agent({
-                rejectUnauthorized: false,
-            }),
-            headers: {
-                Authorization: `PVEAPIToken=${apiToken}`,
-            }
+            httpsAgent: new https.Agent({ rejectUnauthorized: false }),
         });
+    }
+
+    async onModuleInit() {
+        await this.initializeClient();
+    }
+
+    private async initializeClient() {
+        try {
+            // Try to load config from database first
+            const appConfig = await this.prisma.appConfig.findUnique({
+                where: { id: 'app_config' },
+            });
+
+            let baseURL: string | undefined;
+            let apiToken: string | undefined;
+
+            if (appConfig?.pveHost && appConfig?.pveTokenId && appConfig?.pveTokenSecret) {
+                // Use DB config
+                baseURL = appConfig.pveHost;
+                apiToken = `${appConfig.pveTokenId}=${appConfig.pveTokenSecret}`;
+                this.logger.log('Proxmox config loaded from database');
+            } else {
+                // Fallback to env vars
+                baseURL = this.configService.get<string>('PROXMOX_API_URL');
+                apiToken = this.configService.get<string>('PROXMOX_API_TOKEN');
+                if (baseURL && apiToken) {
+                    this.logger.log('Proxmox config loaded from environment variables');
+                } else {
+                    this.logger.warn('No Proxmox configuration found. Please complete setup.');
+                    return;
+                }
+            }
+
+            this.client = axios.create({
+                baseURL,
+                httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+                headers: {
+                    Authorization: `PVEAPIToken=${apiToken}`,
+                },
+            });
+            this.configLoaded = true;
+        } catch (error) {
+            this.logger.error('Error initializing Proxmox client', error.message);
+        }
+    }
+
+    // Reinitialize client when config is updated
+    async reinitializeClient() {
+        this.configLoaded = false;
+        await this.initializeClient();
+    }
+
+    // Test connection with given credentials (for setup wizard)
+    async testConnection(host: string, tokenId: string, tokenSecret: string): Promise<{ success: boolean; message: string; nodes?: number }> {
+        try {
+            const testClient = axios.create({
+                baseURL: host,
+                httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+                headers: {
+                    Authorization: `PVEAPIToken=${tokenId}=${tokenSecret}`,
+                },
+                timeout: 10000,
+            });
+
+            const res = await testClient.get('/api2/json/nodes');
+            const nodes = res.data?.data?.length || 0;
+            return { success: true, message: `Connected successfully! Found ${nodes} node(s).`, nodes };
+        } catch (error) {
+            const message = error.response?.data?.errors
+                ? JSON.stringify(error.response.data.errors)
+                : error.message;
+            return { success: false, message: `Connection failed: ${message}` };
+        }
+    }
+
+    isConfigured(): boolean {
+        return this.configLoaded;
     }
 
     // Expose the Axios client for other services (e.g., PBS)
