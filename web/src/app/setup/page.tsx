@@ -300,7 +300,7 @@ function AuthStep({ onNext, onBack, data, setData }: StepProps) {
                         </div>
                         <div>
                             <p className="font-medium text-white">Email / Mot de passe</p>
-                            <p className="text-xs text-slate-400">Authentification locale classique</p>
+                            <p className="text-xs text-slate-400">Authentification classique</p>
                         </div>
                     </div>
                     <Switch
