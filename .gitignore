@@ -5,3 +5,6 @@ assign_ownership.sh
 *.sql
 # Database backups
 backups/
+pgadmin-servers.json
+FUTURE_FEATURES.md
+HANDOFF.md
